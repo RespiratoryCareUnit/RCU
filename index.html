@@ -3316,19 +3316,19 @@ function addMonthSheet(wb,payload){
   // ── Column widths ───────────────────────────────────────────
   // Patient cols (wide): ชื่อ, Dx, สรุป wide; QI/Stat cols 0-4 กำหนดพิเศษ
   var ptColWids=[
-    4,   // ลำดับ
+    2,   // ลำดับ
     26,  // ชื่อ-นามสกุล
     10,  // HN
     10,  // AN
     5,   // อายุ
     5,   // เพศ
-    12,  // สิทธิ์
-    14,  // รับจาก
+    8,  // สิทธิ์
+    20,  // รับจาก
     9,   // ประเภท
-    20,  // Diagnosis
+    26,  // Diagnosis
     7,   // SAPS3
-    6,   // NEWS
-    10,  // AKI Stage
+    3,   // NEWS
+    5,  // AKI Stage
     8,   // Baseline SCr
     8,   // Current SCr
     6,   // KRT
@@ -3341,10 +3341,10 @@ function addMonthSheet(wb,payload){
     12,  // วันจำหน่าย
     8,   // เวลาจำหน่าย
     13,  // ประเภทจำหน่าย
-    16,  // ปลายทาง
-    18,  // Final Dx
+    20,  // ปลายทาง
+    26,  // Final Dx
     7,   // LOS
-    28,  // สรุปการรักษา
+    20,  // สรุปการรักษา
     8,8,8,8,8, // QI cols
     12,12,14,  // Off tube/Trach
     8,8,8,8,   // Wean/Retube
@@ -3352,7 +3352,7 @@ function addMonthSheet(wb,payload){
     8,8,8      // DKA
   ];
   var finalCols=ptColWids.map(function(w){return {wch:w};});
-  // Override col 0-4 สำหรับ QI/Stat section (กว้างพอดีข้อความ)
+  // Override col 0-4 สำหรับ QI/Stat section 
   [20,12,13,13,13].forEach(function(w,i){
   finalCols[29+i]={wch:w};
 });
