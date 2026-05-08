@@ -3298,19 +3298,19 @@ function buildSheet(sd, cells, merges, mn, yearTH, i) {
   ws['!cols'] = ptColWids.map(w => ({ wch: w }));
   ws['!merges'] = merges || [];
 
-  if (rowHeights && rowHeights.length) {
+  if (typeof rowHeights !== "undefined" && rowHeights && rowHeights.length) {
     ws['!rows'] = rowHeights.map(h => ({ hpt: h }));
   }
 
-  Object.keys(cells).forEach(function(r) {
-    Object.keys(cells[r]).forEach(function(c) {
+  Object.keys(cells || {}).forEach(function(r){
+    Object.keys(cells[r] || {}).forEach(function(c){
+
+      var cell = (cells[r] && cells[r][c]) ? cells[r][c] : null;
 
       var addr = XLSX.utils.encode_cell({
         r: Number(r),
         c: Number(c)
       });
-
-      var cell = cells[r][c];
 
       if (!ws[addr]) ws[addr] = { t: 's', v: '' };
 
@@ -3319,7 +3319,7 @@ function buildSheet(sd, cells, merges, mn, yearTH, i) {
         ws[addr].t = (typeof cell.v === 'number') ? 'n' : 's';
       }
 
-      ws[addr].s = {
+      ws[addr].s = cell && cell.s ? cell.s : {
         alignment: {
           wrapText: true,
           vertical: "center"
@@ -3332,7 +3332,6 @@ function buildSheet(sd, cells, merges, mn, yearTH, i) {
 
   return { ws: ws, name: sheetName };
 }
-
   // Apply cell styles
  
 
