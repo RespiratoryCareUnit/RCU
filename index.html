@@ -3288,96 +3288,84 @@ function addMonthSheet(wb,payload){
   qiPlain('— Unplanned CPR (ราย)',qi.unplanCPR);
   qiItem('% Unplanned CPR','-',qi.unplanCPR,qi.cprPts);
 
-  // ══════════════════════════════════════════════════════════
-  // BUILD WORKSHEET
-  // ══════════════════════════════════════════════════════════
-  var ws=XLSX.utils.aoa_to_sheet(sd);
-  ws['!merges']=merges;
-
-  // Apply cell styles
-  Object.keys(cells).forEach(function(r){
-    Object.keys(cells[r]).forEach(function(c){
-      var addr=XLSX.utils.encode_cell({r:parseInt(r),c:parseInt(c)});
-      if(!ws[addr]) ws[addr]={t:'z'};
-      var v=cells[r][c].v;
-      if(v!==''&&v!==undefined&&v!==null){
-        if(typeof v==='number') ws[addr]={t:'n',v:v};
-        else ws[addr]={t:'s',v:String(v)};
-      }
-     var baseStyle = cells[r][c].s || {};
-
-ws[addr].s = {
-  font: baseStyle.font || { name: "Calibri", sz: 11 },
-  alignment: {
-    wrapText: true,
-    vertical: "center"
-  },
-  border: baseStyle.border || undefined
+  // ═══════════════════════════════════════
+// 1. CREATE WORKBOOK
+// ═══════════════════════════════════════
+var wb = {
+  SheetNames: [],
+  Sheets: {}
 };
-    });
-  });
 
-  // Row heights
-  var wsRows=[];
-  rowHeights.forEach(function(h,i){ wsRows[i]={hpt:h}; });
-  // ws['!rows']=wsRows;
 
-  // ── Column widths ───────────────────────────────────────────
-  // Patient cols (wide): ชื่อ, Dx, สรุป wide; QI/Stat cols 0-4 กำหนดพิเศษ
- var ptColWids = [
-  4,   // ลำดับ
-  22,  // ชื่อ
-  8,   // HN
-  8,   // AN
-  4,   // อายุ
-  4,   // เพศ
-  8,   // สิทธิ์
-  12,  // รับจาก
-  7,   // ประเภท
-  14,  // Diagnosis
-  5,   // SAPS3
-  5,   // NEWS
-  8,   // AKI
-  7,   // Baseline
-  7,   // Current
-  5,   // KRT
-  10,  // วันที่รับ
-  6,   // เวลา
-  10,  // Oxygenation
-  12,  // ความเสี่ยง
-  14,  // หัตถการ
-  7,   // สถานะ
-  10,  // วันจำหน่าย
-  6,   // เวลาจำหน่าย
-  10,  // ประเภทจำหน่าย
-  12,  // ปลายทาง
-  14,  // Final Dx
-  5,   // LOS
-  18   // สรุปการรักษา
-];
-    8,8,8,8,8, // QI cols
-    12,12,14,  // Off tube/Trach
-    8,8,8,8,   // Wean/Retube
-    6,6,8,8,6, // CPR
-    8,8,8      // DKA
+// ═══════════════════════════════════════
+// 2. BUILD SHEET LOOP
+// ═══════════════════════════════════════
+function buildSheet(sd, cells, merges, mn, yearTH, i, rowHeights) {
+
+  var ws = XLSX.utils.aoa_to_sheet(sd);
+  ws['!merges'] = merges || [];
+
+  // ═══ CELL RENDER (SAFE STYLE) ═══
+  for (var r in cells) {
+    for (var c in cells[r]) {
+
+      var addr = XLSX.utils.encode_cell({
+        r: Number(r),
+        c: Number(c)
+      });
+
+      if (!ws[addr]) ws[addr] = { t: 's', v: '' };
+
+      var cell = cells[r][c];
+
+      // value
+      if (cell.v !== undefined && cell.v !== null && cell.v !== '') {
+        ws[addr].v = cell.v;
+        ws[addr].t = (typeof cell.v === 'number') ? 'n' : 's';
+      }
+
+      // SAFE STYLE (ไม่พัง SheetJS)
+      ws[addr].s = {
+        alignment: {
+          wrapText: true,
+          vertical: "center"
+        }
+      };
+    }
+  }
+
+
+  // ═══ ROW HEIGHT (optional safe) ═══
+  if (rowHeights && rowHeights.length) {
+    ws['!rows'] = rowHeights.map(h => ({ hpt: h }));
+  }
+
+
+  // ═══ COLUMN WIDTH (BALANCED ICU) ═══
+  var ptColWids = [
+    3,20,8,8,4,4,8,10,7,14,
+    5,5,7,7,7,5,9,6,10,12,
+    14,7,10,6,10,12,14,5,18
   ];
-  var finalCols=ptColWids.map(function(w){return {wch:w};});
-  // Override col 0-4 สำหรับ QI/Stat section 
- 
 
-ws['!cols']=finalCols;
+  ws['!cols'] = ptColWids.map(w => ({ wch: w }));
 
-  // Freeze top rows
-  ws['!freeze']={xSplit:0,ySplit:2};
 
-  var sheetName=(mn+' '+yearTH).substring(0,31);
-  XLSX.utils.book_append_sheet(wb,ws,sheetName);
+  // ═══ FREEZE (LIGHT) ═══
+  ws['!freeze'] = {
+    xSplit: 0,
+    ySplit: 1
+  };
+
+
+  // ═══ APPEND SHEET SAFE ═══
+  var sheetName = (mn + '_' + yearTH + '_' + i).substring(0, 31);
+
+  if (!wb.Sheets[sheetName]) {
+    wb.Sheets[sheetName] = ws;
+    wb.SheetNames.push(sheetName);
+  }
 }
-
-
-
-
-
 // Do NOT call renderList/renderDash here — done after async load
 _initPatients();
 </script>
