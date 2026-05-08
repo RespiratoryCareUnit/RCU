@@ -3316,7 +3316,7 @@ function addMonthSheet(wb,payload){
   // ── Column widths ───────────────────────────────────────────
   // Patient cols (wide): ชื่อ, Dx, สรุป wide; QI/Stat cols 0-4 กำหนดพิเศษ
   var ptColWids=[
-    5,   // ลำดับ
+    4,   // ลำดับ
     26,  // ชื่อ-นามสกุล
     10,  // HN
     10,  // AN
@@ -3352,8 +3352,8 @@ function addMonthSheet(wb,payload){
     8,8,8      // DKA
   ];
   var finalCols=ptColWids.map(function(w){return {wch:w};});
-  // Override col 0-4 สำหรับ QI/Stat section (กว้างพอดีข้อความ)
-  [ุ5,26,10,10,5].forEach(function(w,i){ finalCols[i]={wch:w}; });
+ 
+  [55,12,13,13,13].forEach(function(w,i){ finalCols[i]={wch:w}; });
   ws['!cols']=finalCols;
 
   // Freeze top rows
