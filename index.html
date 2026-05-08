@@ -3311,7 +3311,7 @@ function addMonthSheet(wb,payload){
   // Row heights
   var wsRows=[];
   rowHeights.forEach(function(h,i){ wsRows[i]={hpt:h}; });
-  ws['!rows']=wsRows;
+  // ws['!rows']=wsRows;
 
   // ── Column widths ───────────────────────────────────────────
   // Patient cols (wide): ชื่อ, Dx, สรุป wide; QI/Stat cols 0-4 กำหนดพิเศษ
@@ -3353,11 +3353,14 @@ function addMonthSheet(wb,payload){
   ];
   var finalCols=ptColWids.map(function(w){return {wch:w};});
   // Override col 0-4 สำหรับ QI/Stat section (กว้างพอดีข้อความ)
-  [55,12,13,13,13].forEach(function(w,i){ finalCols[i]={wch:w}; });
-  ws['!cols']=finalCols;
+  [20,12,13,13,13].forEach(function(w,i){
+  finalCols[29+i]={wch:w};
+});
+
+ws['!cols']=finalCols;
 
   // Freeze top rows
-  ws['!freeze']={xSplit:0,ySplit:5};
+  ws['!freeze']={xSplit:0,ySplit:2};
 
   var sheetName=(mn+' '+yearTH).substring(0,31);
   XLSX.utils.book_append_sheet(wb,ws,sheetName);
