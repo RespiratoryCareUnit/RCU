@@ -3352,7 +3352,7 @@ function addMonthSheet(wb,payload){
     8,8,8      // DKA
   ];
   var finalCols=ptColWids.map(function(w){return {wch:w};});
- 
+  // Override col 0-4 สำหรับ QI/Stat section (กว้างพอดีข้อความ)
   [55,12,13,13,13].forEach(function(w,i){ finalCols[i]={wch:w}; });
   ws['!cols']=finalCols;
 
