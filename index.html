@@ -3287,7 +3287,40 @@ function addMonthSheet(wb,payload){
   qiItem('% Pt CPR รอดชีวิต > 24 ชม.','-',qi.surv24N,qi.cprPts);
   qiPlain('— Unplanned CPR (ราย)',qi.unplanCPR);
   qiItem('% Unplanned CPR','-',qi.unplanCPR,qi.cprPts);
+var ptColWids = [
+  5,   // ลำดับ
+  26,  // ชื่อ-นามสกุล
+  10,  // HN
+  10,  // AN
+  6,   // อายุ
+  6,   // เพศ
+  12,  // สิทธิ์
+  14,  // รับจาก
+  10,  // ประเภท
+  20,  // Diagnosis
+  7,   // SAPS III
+  6,   // NEWS
+  10,  // AKI Stage
+  9,   // Baseline SCr
+  9,   // Current SCr
+  6,   // KRT
+  12,  // วันที่รับ
+  7,   // เวลา
+  14,  // Oxygenation
+  18,  // ความเสี่ยง
+  20,  // หัตถการ
+  8,   // สถานะ
+  12,  // วันจำหน่าย
+  8,   // เวลาจำหน่าย
+  14,  // ประเภทจำหน่าย
+  16,  // ปลายทาง
+  18,  // Final Dx
+  7,   // LOS
+  28,  // สรุปการรักษา
 
+  // QI / KPI columns (พวกท้ายตาราง)
+  8,8,8,8,8,8,8,8,8
+];
  // ══════════════════════════════════════════════════════════
 // BUILD WORKSHEET
 // ══════════════════════════════════════════════════════════
