@@ -3291,11 +3291,16 @@ function addMonthSheet(wb,payload){
   // ══════════════════════════════════════════════════════════
   // BUILD WORKSHEET
   // ══════════════════════════════════════════════════════════
- function buildSheet(sd, cells, merges, mn, yearTH, i) {
+function buildSheet(sd, cells, merges, mn, yearTH, i) {
 
   var ws = XLSX.utils.aoa_to_sheet(sd);
 
+  ws['!cols'] = ptColWids.map(w => ({ wch: w }));
   ws['!merges'] = merges || [];
+
+  if (rowHeights && rowHeights.length) {
+    ws['!rows'] = rowHeights.map(h => ({ hpt: h }));
+  }
 
   Object.keys(cells).forEach(function(r) {
     Object.keys(cells[r]).forEach(function(c) {
@@ -3323,87 +3328,13 @@ function addMonthSheet(wb,payload){
     });
   });
 
-  ws['!cols'] = [
-    3,20,8,8,4,4,8,10,7,14,
-    5,5,7,7,7,5,9,6,10,12,
-    14,7,10,6,10,12,14,5,18
-  ].map(w => ({ wch: w }));
-
-  ws['!views'] = [{ state: 'frozen', ySplit: 1 }];
-
   var sheetName = (mn + '_' + yearTH + '_' + i).substring(0, 31);
 
   return { ws: ws, name: sheetName };
 }
 
   // Apply cell styles
-  Object.keys(cells).forEach(function(r){
-    Object.keys(cells[r]).forEach(function(c){
-      var addr=XLSX.utils.encode_cell({r:parseInt(r),c:parseInt(c)});
-      if(!ws[addr]) ws[addr]={t:'z'};
-      var v=cells[r][c].v;
-      if(v!==''&&v!==undefined&&v!==null){
-        if(typeof v==='number') ws[addr]={t:'n',v:v};
-        else ws[addr]={t:'s',v:String(v)};
-      }
-      ws[addr].s=cells[r][c].s;
-    });
-  });
-
-  // Row heights
-  var wsRows=[];
-  rowHeights.forEach(function(h,i){ wsRows[i]={hpt:h}; });
-  ws['!rows']=wsRows;
-
-  // ── Column widths ───────────────────────────────────────────
-  // Patient cols (wide): ชื่อ, Dx, สรุป wide; QI/Stat cols 0-4 กำหนดพิเศษ
-  var ptColWids=[
-    4,   // ลำดับ
-    26,  // ชื่อ-นามสกุล
-    10,  // HN
-    10,  // AN
-    5,   // อายุ
-    5,   // เพศ
-    12,  // สิทธิ์
-    14,  // รับจาก
-    9,   // ประเภท
-    20,  // Diagnosis
-    7,   // SAPS3
-    6,   // NEWS
-    10,  // AKI Stage
-    8,   // Baseline SCr
-    8,   // Current SCr
-    6,   // KRT
-    12,  // วันที่รับ
-    7,   // เวลา
-    14,  // Oxygenation
-    18,  // ความเสี่ยง
-    20,  // หัตถการ
-    7,   // สถานะ
-    12,  // วันจำหน่าย
-    8,   // เวลาจำหน่าย
-    13,  // ประเภทจำหน่าย
-    16,  // ปลายทาง
-    18,  // Final Dx
-    7,   // LOS
-    28,  // สรุปการรักษา
-    8,8,8,8,8, // QI cols
-    12,12,14,  // Off tube/Trach
-    8,8,8,8,   // Wean/Retube
-    6,6,8,8,6, // CPR
-    8,8,8      // DKA
-  ];
-  var finalCols=ptColWids.map(function(w){return {wch:w};});
-  // Override col 0-4 สำหรับ QI/Stat section (กว้างพอดีข้อความ)
-  [55,12,13,13,13].forEach(function(w,i){ finalCols[i]={wch:w}; });
-  ws['!cols']=finalCols;
-
-  // Freeze top rows
-  ws['!freeze']={xSplit:0,ySplit:5};
-
-  var sheetName=(mn+' '+yearTH).substring(0,31);
-  XLSX.utils.book_append_sheet(wb,ws,sheetName);
-}
+ 
 
 
 
