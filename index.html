@@ -3288,55 +3288,98 @@ function addMonthSheet(wb,payload){
   qiPlain('— Unplanned CPR (ราย)',qi.unplanCPR);
   qiItem('% Unplanned CPR','-',qi.unplanCPR,qi.cprPts);
 
-// ══════════════════════════════════════════════════════════
-// BUILD WORKSHEET
-// ══════════════════════════════════════════════════════════
-function buildSheet(sd, cells, merges, mn, yearTH, i) {
+  // ══════════════════════════════════════════════════════════
+  // BUILD WORKSHEET
+  // ══════════════════════════════════════════════════════════
+  var ws=XLSX.utils.aoa_to_sheet(sd);
+  ws['!merges']=merges;
 
-  var ws = XLSX.utils.aoa_to_sheet(sd);
-
-  ws['!cols'] = ptColWids.map(w => ({ wch: w }));
-  ws['!merges'] = merges || [];
-
-  if (typeof rowHeights !== "undefined" && rowHeights && rowHeights.length) {
-    ws['!rows'] = rowHeights.map(h => ({ hpt: h }));
-  }
-
-  Object.keys(cells || {}).forEach(function(r){
-    Object.keys(cells[r] || {}).forEach(function(c){
-
-      var cell = cells[r][c];
-
-      var addr = XLSX.utils.encode_cell({
-        r: Number(r),
-        c: Number(c)
-      });
-
-      if (!ws[addr]) ws[addr] = { t:'s', v:'' };
-
-      if (cell && cell.v != null) {
-        ws[addr].v = cell.v;
-        ws[addr].t = (typeof cell.v === 'number') ? 'n' : 's';
+  // Apply cell styles
+  Object.keys(cells).forEach(function(r){
+    Object.keys(cells[r]).forEach(function(c){
+      var addr=XLSX.utils.encode_cell({r:parseInt(r),c:parseInt(c)});
+      if(!ws[addr]) ws[addr]={t:'z'};
+      var v=cells[r][c].v;
+      if(v!==''&&v!==undefined&&v!==null){
+        if(typeof v==='number') ws[addr]={t:'n',v:v};
+        else ws[addr]={t:'s',v:String(v)};
       }
-
-      ws[addr].s = (cell && cell.s) ? cell.s : {
-        alignment: {
-          wrapText: true,
-          vertical: "center"
-        }
-      };
+      ws[addr].s=cells[r][c].s;
     });
   });
 
-  var sheetName = (mn + '_' + yearTH + '_' + i).substring(0,31);
+  // Row heights
+  var wsRows=[];
+  rowHeights.forEach(function(h,i){ wsRows[i]={hpt:h}; });
+  ws['!rows']=wsRows;
 
-  return { ws: ws, name: sheetName };
+  // ── Column widths ───────────────────────────────────────────
+  // Patient cols (wide): ชื่อ, Dx, สรุป wide; QI/Stat cols 0-4 กำหนดพิเศษ
+  var ptColWids=[
+    4,   // ลำดับ
+    26,  // ชื่อ-นามสกุล
+    10,  // HN
+    10,  // AN
+    5,   // อายุ
+    5,   // เพศ
+    12,  // สิทธิ์
+    14,  // รับจาก
+    9,   // ประเภท
+    20,  // Diagnosis
+    7,   // SAPS3
+    6,   // NEWS
+    10,  // AKI Stage
+    8,   // Baseline SCr
+    8,   // Current SCr
+    6,   // KRT
+    12,  // วันที่รับ
+    7,   // เวลา
+    14,  // Oxygenation
+    18,  // ความเสี่ยง
+    20,  // หัตถการ
+    7,   // สถานะ
+    12,  // วันจำหน่าย
+    8,   // เวลาจำหน่าย
+    13,  // ประเภทจำหน่าย
+    16,  // ปลายทาง
+    18,  // Final Dx
+    7,   // LOS
+    28,  // สรุปการรักษา
+    8,8,8,8,8, // QI cols
+    12,12,14,  // Off tube/Trach
+    8,8,8,8,   // Wean/Retube
+    6,6,8,8,6, // CPR
+    8,8,8      // DKA
+  ];
+  var finalCols=ptColWids.map(function(w){return {wch:w};});
+  // Override col 0-4 สำหรับ QI/Stat section (กว้างพอดีข้อความ)
+  [5,12,13,13,13].forEach(function(w,i){ finalCols[i]={wch:w}; });
+  ws['!cols']=finalCols;
+
+  // Freeze top rows
+  ws['!freeze']={xSplit:0,ySplit:5};
+
+  var sheetName=(mn+' '+yearTH).substring(0,31);
+  XLSX.utils.book_append_sheet(wb,ws,sheetName);
 }
- 
 
 
 
 
 
-
- 
+// Do NOT call renderList/renderDash here — done after async load
+_initPatients();
+</script>
+ <script>
+  </script>
+<div id="modal-confirm" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center">
+ <div style="background:#fff;border-radius:16px;padding:24px 20px;max-width:320px;width:90%;margin:auto;box-shadow:0 8px 32px rgba(0,0,0,.2)">
+ <div id="confirm-msg" style="font-size:14px;color:#1A2B45;font-weight:600;margin-bottom:20px;text-align:center;line-height:1.6"></div>
+ <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+ <button id="confirm-cancel" onclick="closeConfirmModal()" style="background:#F0F4FB;border:1px solid #B8CCE4;border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;color:#5A7A9A;font-family:'IBM Plex Sans Thai',sans-serif">ยกเลิก</button>
+ <button id="confirm-ok" style="background:#ff1744;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;color:#fff;font-family:'IBM Plex Sans Thai',sans-serif">ยืนยัน</button>
+ </div>
+ </div>
+</div>
+</body>
+</html>
