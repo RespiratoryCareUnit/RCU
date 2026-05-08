@@ -3304,7 +3304,16 @@ function addMonthSheet(wb,payload){
         if(typeof v==='number') ws[addr]={t:'n',v:v};
         else ws[addr]={t:'s',v:String(v)};
       }
-      ws[addr].s=cells[r][c].s;
+     var baseStyle = cells[r][c].s || {};
+
+ws[addr].s = {
+  font: baseStyle.font || { name: "Calibri", sz: 11 },
+  alignment: {
+    wrapText: true,
+    vertical: "center"
+  },
+  border: baseStyle.border || undefined
+};
     });
   });
 
@@ -3315,36 +3324,37 @@ function addMonthSheet(wb,payload){
 
   // ── Column widths ───────────────────────────────────────────
   // Patient cols (wide): ชื่อ, Dx, สรุป wide; QI/Stat cols 0-4 กำหนดพิเศษ
-  var ptColWids=[
-    2,   // ลำดับ
-    26,  // ชื่อ-นามสกุล
-    10,  // HN
-    10,  // AN
-    5,   // อายุ
-    5,   // เพศ
-    8,  // สิทธิ์
-    20,  // รับจาก
-    9,   // ประเภท
-    26,  // Diagnosis
-    7,   // SAPS3
-    3,   // NEWS
-    5,  // AKI Stage
-    8,   // Baseline SCr
-    8,   // Current SCr
-    6,   // KRT
-    12,  // วันที่รับ
-    7,   // เวลา
-    14,  // Oxygenation
-    18,  // ความเสี่ยง
-    20,  // หัตถการ
-    7,   // สถานะ
-    12,  // วันจำหน่าย
-    8,   // เวลาจำหน่าย
-    13,  // ประเภทจำหน่าย
-    20,  // ปลายทาง
-    26,  // Final Dx
-    7,   // LOS
-    20,  // สรุปการรักษา
+ var ptColWids = [
+  4,   // ลำดับ
+  22,  // ชื่อ
+  8,   // HN
+  8,   // AN
+  4,   // อายุ
+  4,   // เพศ
+  8,   // สิทธิ์
+  12,  // รับจาก
+  7,   // ประเภท
+  14,  // Diagnosis
+  5,   // SAPS3
+  5,   // NEWS
+  8,   // AKI
+  7,   // Baseline
+  7,   // Current
+  5,   // KRT
+  10,  // วันที่รับ
+  6,   // เวลา
+  10,  // Oxygenation
+  12,  // ความเสี่ยง
+  14,  // หัตถการ
+  7,   // สถานะ
+  10,  // วันจำหน่าย
+  6,   // เวลาจำหน่าย
+  10,  // ประเภทจำหน่าย
+  12,  // ปลายทาง
+  14,  // Final Dx
+  5,   // LOS
+  18   // สรุปการรักษา
+];
     8,8,8,8,8, // QI cols
     12,12,14,  // Off tube/Trach
     8,8,8,8,   // Wean/Retube
@@ -3353,9 +3363,7 @@ function addMonthSheet(wb,payload){
   ];
   var finalCols=ptColWids.map(function(w){return {wch:w};});
   // Override col 0-4 สำหรับ QI/Stat section 
-  [20,12,13,13,13].forEach(function(w,i){
-  finalCols[29+i]={wch:w};
-});
+ 
 
 ws['!cols']=finalCols;
 
