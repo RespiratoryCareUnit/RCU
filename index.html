@@ -3288,9 +3288,9 @@ function addMonthSheet(wb,payload){
   qiPlain('— Unplanned CPR (ราย)',qi.unplanCPR);
   qiItem('% Unplanned CPR','-',qi.unplanCPR,qi.cprPts);
 
-  // ══════════════════════════════════════════════════════════
-  // BUILD WORKSHEET
-  // ══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
+// BUILD WORKSHEET
+// ══════════════════════════════════════════════════════════
 function buildSheet(sd, cells, merges, mn, yearTH, i) {
 
   var ws = XLSX.utils.aoa_to_sheet(sd);
@@ -3305,21 +3305,21 @@ function buildSheet(sd, cells, merges, mn, yearTH, i) {
   Object.keys(cells || {}).forEach(function(r){
     Object.keys(cells[r] || {}).forEach(function(c){
 
-      var cell = (cells[r] && cells[r][c]) ? cells[r][c] : null;
+      var cell = cells[r][c];
 
       var addr = XLSX.utils.encode_cell({
         r: Number(r),
         c: Number(c)
       });
 
-      if (!ws[addr]) ws[addr] = { t: 's', v: '' };
+      if (!ws[addr]) ws[addr] = { t:'s', v:'' };
 
-      if (cell && cell.v !== undefined && cell.v !== null) {
+      if (cell && cell.v != null) {
         ws[addr].v = cell.v;
         ws[addr].t = (typeof cell.v === 'number') ? 'n' : 's';
       }
 
-      ws[addr].s = cell && cell.s ? cell.s : {
+      ws[addr].s = (cell && cell.s) ? cell.s : {
         alignment: {
           wrapText: true,
           vertical: "center"
@@ -3328,30 +3328,15 @@ function buildSheet(sd, cells, merges, mn, yearTH, i) {
     });
   });
 
-  var sheetName = (mn + '_' + yearTH + '_' + i).substring(0, 31);
+  var sheetName = (mn + '_' + yearTH + '_' + i).substring(0,31);
 
   return { ws: ws, name: sheetName };
 }
-  // Apply cell styles
  
 
 
 
 
 
-// Do NOT call renderList/renderDash here — done after async load
-_initPatients();
-</script>
- <script>
-  </script>
-<div id="modal-confirm" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center">
- <div style="background:#fff;border-radius:16px;padding:24px 20px;max-width:320px;width:90%;margin:auto;box-shadow:0 8px 32px rgba(0,0,0,.2)">
- <div id="confirm-msg" style="font-size:14px;color:#1A2B45;font-weight:600;margin-bottom:20px;text-align:center;line-height:1.6"></div>
- <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
- <button id="confirm-cancel" onclick="closeConfirmModal()" style="background:#F0F4FB;border:1px solid #B8CCE4;border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;color:#5A7A9A;font-family:'IBM Plex Sans Thai',sans-serif">ยกเลิก</button>
- <button id="confirm-ok" style="background:#ff1744;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;color:#fff;font-family:'IBM Plex Sans Thai',sans-serif">ยืนยัน</button>
- </div>
- </div>
-</div>
-</body>
-</html>
+
+ 
