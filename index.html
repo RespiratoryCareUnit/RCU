@@ -3291,8 +3291,50 @@ function addMonthSheet(wb,payload){
   // ══════════════════════════════════════════════════════════
   // BUILD WORKSHEET
   // ══════════════════════════════════════════════════════════
-  var ws=XLSX.utils.aoa_to_sheet(sd);
-  ws['!merges']=merges;
+ function buildSheet(sd, cells, merges, mn, yearTH, i) {
+
+  var ws = XLSX.utils.aoa_to_sheet(sd);
+
+  ws['!merges'] = merges || [];
+
+  Object.keys(cells).forEach(function(r) {
+    Object.keys(cells[r]).forEach(function(c) {
+
+      var addr = XLSX.utils.encode_cell({
+        r: Number(r),
+        c: Number(c)
+      });
+
+      var cell = cells[r][c];
+
+      if (!ws[addr]) ws[addr] = { t: 's', v: '' };
+
+      if (cell && cell.v !== undefined && cell.v !== null) {
+        ws[addr].v = cell.v;
+        ws[addr].t = (typeof cell.v === 'number') ? 'n' : 's';
+      }
+
+      ws[addr].s = {
+        alignment: {
+          wrapText: true,
+          vertical: "center"
+        }
+      };
+    });
+  });
+
+  ws['!cols'] = [
+    3,20,8,8,4,4,8,10,7,14,
+    5,5,7,7,7,5,9,6,10,12,
+    14,7,10,6,10,12,14,5,18
+  ].map(w => ({ wch: w }));
+
+  ws['!views'] = [{ state: 'frozen', ySplit: 1 }];
+
+  var sheetName = (mn + '_' + yearTH + '_' + i).substring(0, 31);
+
+  return { ws: ws, name: sheetName };
+}
 
   // Apply cell styles
   Object.keys(cells).forEach(function(r){
