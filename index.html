@@ -3288,7 +3288,7 @@ function addMonthSheet(wb,payload){
   qiPlain('— Unplanned CPR (ราย)',qi.unplanCPR);
   qiItem('% Unplanned CPR','-',qi.unplanCPR,qi.cprPts);
 
-  // ═══════════════════════════════════════
+// ═══════════════════════════════════════
 // 1. CREATE WORKBOOK
 // ═══════════════════════════════════════
 var wb = {
@@ -3366,6 +3366,11 @@ function buildSheet(sd, cells, merges, mn, yearTH, i, rowHeights) {
     wb.SheetNames.push(sheetName);
   }
 }
+
+
+
+
+
 // Do NOT call renderList/renderDash here — done after async load
 _initPatients();
 </script>
