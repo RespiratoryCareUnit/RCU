@@ -3287,84 +3287,82 @@ function addMonthSheet(wb,payload){
   qiItem('% Pt CPR รอดชีวิต > 24 ชม.','-',qi.surv24N,qi.cprPts);
   qiPlain('— Unplanned CPR (ราย)',qi.unplanCPR);
   qiItem('% Unplanned CPR','-',qi.unplanCPR,qi.cprPts);
-var ptColWids = [
-  5,   // ลำดับ
-  26,  // ชื่อ-นามสกุล
-  10,  // HN
-  10,  // AN
-  6,   // อายุ
-  6,   // เพศ
-  12,  // สิทธิ์
-  14,  // รับจาก
-  10,  // ประเภท
-  20,  // Diagnosis
-  7,   // SAPS III
-  6,   // NEWS
-  10,  // AKI Stage
-  9,   // Baseline SCr
-  9,   // Current SCr
-  6,   // KRT
-  12,  // วันที่รับ
-  7,   // เวลา
-  14,  // Oxygenation
-  18,  // ความเสี่ยง
-  20,  // หัตถการ
-  8,   // สถานะ
-  12,  // วันจำหน่าย
-  8,   // เวลาจำหน่าย
-  14,  // ประเภทจำหน่าย
-  16,  // ปลายทาง
-  18,  // Final Dx
-  7,   // LOS
-  28,  // สรุปการรักษา
 
-  // QI / KPI columns (พวกท้ายตาราง)
-  8,8,8,8,8,8,8,8,8
-];
- // ══════════════════════════════════════════════════════════
-// BUILD WORKSHEET
-// ══════════════════════════════════════════════════════════
-function buildSheet(sd, cells, merges, mn, yearTH, i) {
+  // ══════════════════════════════════════════════════════════
+  // BUILD WORKSHEET
+  // ══════════════════════════════════════════════════════════
+  var ws=XLSX.utils.aoa_to_sheet(sd);
+  ws['!merges']=merges;
 
-  var ws = XLSX.utils.aoa_to_sheet(sd);
-
-  ws['!cols'] = ptColWids.map(w => ({ wch: w }));
-  ws['!merges'] = merges || [];
-
-  if (typeof rowHeights !== "undefined" && rowHeights && rowHeights.length) {
-    ws['!rows'] = rowHeights.map(h => ({ hpt: h }));
-  }
-
-  Object.keys(cells || {}).forEach(function(r){
-    Object.keys(cells[r] || {}).forEach(function(c){
-
-      var cell = cells[r][c];
-
-      var addr = XLSX.utils.encode_cell({
-        r: Number(r),
-        c: Number(c)
-      });
-
-      if (!ws[addr]) ws[addr] = { t:'s', v:'' };
-
-      if (cell && cell.v != null) {
-        ws[addr].v = cell.v;
-        ws[addr].t = (typeof cell.v === 'number') ? 'n' : 's';
+  // Apply cell styles
+  Object.keys(cells).forEach(function(r){
+    Object.keys(cells[r]).forEach(function(c){
+      var addr=XLSX.utils.encode_cell({r:parseInt(r),c:parseInt(c)});
+      if(!ws[addr]) ws[addr]={t:'z'};
+      var v=cells[r][c].v;
+      if(v!==''&&v!==undefined&&v!==null){
+        if(typeof v==='number') ws[addr]={t:'n',v:v};
+        else ws[addr]={t:'s',v:String(v)};
       }
-
-      ws[addr].s = (cell && cell.s) ? cell.s : {
-        alignment: {
-          wrapText: true,
-          vertical: "center"
-        }
-      };
+      ws[addr].s=cells[r][c].s;
     });
   });
 
-  var sheetName = (mn + '_' + yearTH + '_' + i).substring(0,31);
+  // Row heights
+  var wsRows=[];
+  rowHeights.forEach(function(h,i){ wsRows[i]={hpt:h}; });
+  ws['!rows']=wsRows;
 
-  return { ws: ws, name: sheetName };
+  // ── Column widths ───────────────────────────────────────────
+  // Patient cols (wide): ชื่อ, Dx, สรุป wide; QI/Stat cols 0-4 กำหนดพิเศษ
+  var ptColWids=[
+    5,   // ลำดับ
+    30,  // ชื่อ-นามสกุล
+    10,  // HN
+    10,  // AN
+    5,   // อายุ
+    5,   // เพศ
+    12,  // สิทธิ์
+    14,  // รับจาก
+    9,   // ประเภท
+    20,  // Diagnosis
+    7,   // SAPS3
+    6,   // NEWS
+    10,  // AKI Stage
+    8,   // Baseline SCr
+    8,   // Current SCr
+    6,   // KRT
+    12,  // วันที่รับ
+    7,   // เวลา
+    14,  // Oxygenation
+    18,  // ความเสี่ยง
+    20,  // หัตถการ
+    7,   // สถานะ
+    12,  // วันจำหน่าย
+    8,   // เวลาจำหน่าย
+    13,  // ประเภทจำหน่าย
+    16,  // ปลายทาง
+    18,  // Final Dx
+    7,   // LOS
+    28,  // สรุปการรักษา
+    8,8,8,8,8, // QI cols
+    12,12,14,  // Off tube/Trach
+    8,8,8,8,   // Wean/Retube
+    6,6,8,8,6, // CPR
+    8,8,8      // DKA
+  ];
+  var finalCols=ptColWids.map(function(w){return {wch:w};});
+  // Override col 0-4 สำหรับ QI/Stat section (กว้างพอดีข้อความ)
+  [ุ5,30,10,10,5].forEach(function(w,i){ finalCols[i]={wch:w}; });
+  ws['!cols']=finalCols;
+
+  // Freeze top rows
+  ws['!freeze']={xSplit:0,ySplit:5};
+
+  var sheetName=(mn+' '+yearTH).substring(0,31);
+  XLSX.utils.book_append_sheet(wb,ws,sheetName);
 }
+
 
 
 
