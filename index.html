@@ -2850,57 +2850,19 @@ function buildMonthPayload(y,m){
 }
 
 // ── Export to Google Sheets via GAS ─────────────────────────
-
 function viewSheets(){
-
   const url = 'https://docs.google.com/spreadsheets/d/' + '1RIrnaA95ArzpNpcZhsM-ZY9VM5XRzCVl-tY53ewO1t4';
-
   window.open(url, '_blank');
-
 }
-window._GAS_URL = "https://script.google.com/macros/s/AKfycbx3ytQnkB3zCieFJb6cXPau5ADvnU4PDeJ22wvAJ30nZVKW40nBLEGvFCggTaroccF9/exec";
- 
+
 async function exportToSheets(){
-
-  const gasUrl = window._GAS_URL = "https://script.google.com/macros/s/AKfycbx3ytQnkB3zCieFJb6cXPau5ADvnU4PDeJ22wvAJ30nZVKW40nBLEGvFCggTaroccF9/exec%22; || localStorage.getItem('rcu1_gas_url') || '';
-
+  const gasUrl = window._GAS_URL || localStorage.getItem('rcu1_gas_url') || '';
   if(!gasUrl){
-
     showError('กรุณาตั้งค่า GAS URL ก่อนครับ (ใส่ใน index.html บรรทัด window._GAS_URL)');
-
-    return;
-
-  }
-
-  const y = +document.getElementById('dash-year').value;
-
- 
-// ── Export to Google Sheets via GAS ─────────────────────────
- 
-window._GAS_URL = "https://script.google.com/macros/s/AKfycbx3ytQnkB3zCieFJb6cXPau5ADvnU4PDeJ22wvAJ30nZVKW40nBLEGvFCggTaroccF9/exec";
- 
-function viewSheets(){
-  const url =
-    'https://docs.google.com/spreadsheets/d/' +
-    '1RIrnaA95ArzpNpcZhsM-ZY9VM5XRzCVl-tY53ewO1t4';
- 
-  window.open(url, '_blank');
-}
- 
-async function exportToSheets(){
- 
-  const gasUrl =
-    window._GAS_URL ||
-    localStorage.getItem('rcu1_gas_url') ||
-    '';
- 
-  if(!gasUrl){
-    showError('กรุณาตั้งค่า GAS URL ก่อนครับ');
     return;
   }
- 
   const y = +document.getElementById('dash-year').value;
- 
+
   const ptHeaders = [
     'ลำดับ','ชื่อ-นามสกุล','HN','AN','อายุ','เพศ','สิทธิ์','รับจาก',
     'ประเภทผู้ป่วย','Diagnosis','SAPS3','NEWS','AKI Stage',
@@ -3391,9 +3353,7 @@ function addMonthSheet(wb,payload){
   ];
   var finalCols=ptColWids.map(function(w){return {wch:w};});
   // Override col 0-4 สำหรับ QI/Stat section (กว้างพอดีข้อความ)
-  [55,12,13,13,13].forEach(function(w,i){
-  finalCols[29 + i] = { wch:w };
-});
+  [55,12,13,13,13].forEach(function(w,i){ finalCols[i]={wch:w}; });
   ws['!cols']=finalCols;
 
   // Freeze top rows
