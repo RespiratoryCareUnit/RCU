@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0154ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="RCU1">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>จัดเวร — RCU 1</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --navy:#0d3b8c; --navy-deep:#082a66; --sky:#e8f0fd; --paper:#fbfaf7;
+    --ink:#1c2333; --line:#d8dfef; --amber:#c47a1f; --ok:#1f7a4d; --danger:#b9432f;
+    --shift-night:#3a4a8f; --shift-morn:#c47a1f; --shift-aft:#1f7a4d;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:"IBM Plex Sans Thai","Sarabun",system-ui,sans-serif;background:var(--paper);color:var(--ink);}
+  header{background:linear-gradient(135deg,var(--navy),var(--navy-deep));color:#fff;padding:14px 16px 10px;}
+  header h1{margin:0;font-size:1.05rem;font-weight:700;}
+  header p{margin:4px 0 0;font-size:.74rem;opacity:.85;}
+  a.back{color:#cfe0ff;font-size:.75rem;text-decoration:none;}
+
+  details.settings{background:#fff;border-bottom:1px solid var(--line);}
+  details.settings summary{padding:10px 16px;font-size:.8rem;font-weight:600;color:var(--navy-deep);cursor:pointer;list-style:none;}
+  details.settings summary::-webkit-details-marker{display:none;}
+  details.settings summary::before{content:"⚙️ "; }
+  details.settings[open] summary::after{content:" ▲"; float:right; color:#999;}
+  details.settings summary::after{content:" ▼"; float:right; color:#999;}
+  .settings-body{padding:0 16px 14px;max-height:70vh;overflow-y:auto;}
+  .settings-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+  .settings-row .field label{display:block;font-size:.72rem;color:#666;margin-bottom:3px;}
+  .settings-row select, .settings-row input[type=number]{padding:6px 8px;border:1px solid var(--line);border-radius:7px;font-size:.82rem;}
+  .roster-card{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px;}
+  .roster-card h4{margin:0 0 6px;font-size:.78rem;color:var(--navy-deep);}
+  .roster-card textarea{width:100%;min-height:40px;padding:6px;border:1px solid var(--line);border-radius:6px;font-size:.78rem;font-family:inherit;}
+  .btn-primary{padding:8px 14px;border:1px solid var(--navy);background:var(--navy);color:#fff;border-radius:7px;font-size:.8rem;font-weight:600;cursor:pointer;}
+  .persist-note{font-size:.68rem;color:#999;margin-top:6px;line-height:1.5;}
+
+  .duty-shift-card{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px;}
+  .duty-shift-card h4{margin:0 0 8px;font-size:.8rem;}
+  .duty-shift-card.shift-ดึก{background:#f2f4fb;} .duty-shift-card.shift-ดึก h4{color:var(--shift-night);}
+  .duty-shift-card.shift-เช้า{background:#fdf6ec;} .duty-shift-card.shift-เช้า h4{color:var(--shift-morn);}
+  .duty-shift-card.shift-บ่าย{background:#edf7ef;} .duty-shift-card.shift-บ่าย h4{color:var(--shift-aft);}
+  .duty-field{margin-bottom:6px;}
+  .duty-field label{display:block;font-size:.68rem;color:#666;margin-bottom:2px;}
+  .duty-field textarea{width:100%;min-height:32px;padding:5px 7px;border:1px solid var(--line);border-radius:6px;font-size:.76rem;font-family:inherit;resize:vertical;background:#fff;}
+
+  nav.tabs{display:flex;background:#fff;border-bottom:2px solid var(--line);position:sticky;top:0;z-index:6;}
+  nav.tabs button{flex:1;padding:10px 2px;background:none;border:none;font-size:.72rem;font-weight:600;color:#7a8399;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;}
+  nav.tabs button.active{color:var(--navy);border-bottom-color:var(--navy);}
+
+  .jumpbar{display:flex;align-items:center;gap:8px;background:#fff;padding:8px 12px;border-bottom:1px solid var(--line);position:sticky;top:39px;z-index:5;}
+  .jumpbar label{font-size:.74rem;color:#666;}
+  .jumpbar select{flex:1;padding:6px 8px;border:1px solid var(--line);border-radius:7px;font-size:.82rem;}
+
+  main{padding:10px 8px 60px;max-width:900px;margin:0 auto;}
+  section.panel{display:none;}
+  section.panel.active{display:block;}
+
+  .note{font-size:.7rem;color:#8a6d1f;background:#fff8e8;border:1px solid #f0dfa8;border-radius:8px;padding:7px 9px;margin:10px 4px;line-height:1.5;}
+
+  .day-heading{background:var(--navy-deep);color:#fff;font-size:.86rem;font-weight:700;padding:8px 12px;margin:14px 4px 0;border-radius:8px 8px 0 0;position:sticky;top:80px;z-index:4;}
+
+  /* --- Assign-names tab (cards) --- */
+  .shift-card{border:1px solid var(--line);border-top:none;background:#fff;margin:0 4px;padding:8px 10px 10px;}
+  .shift-card:last-child{border-radius:0 0 10px 10px;margin-bottom:4px;}
+  .shift-title{font-size:.72rem;font-weight:700;color:#fff;padding:4px 9px;border-radius:6px;display:inline-block;margin-bottom:8px;}
+  .shift-title.ดึก{background:var(--shift-night);} .shift-title.เช้า{background:var(--shift-morn);} .shift-title.บ่าย{background:var(--shift-aft);}
+  .role-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+  .role-item{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:6px 8px;}
+  .role-item label{display:block;font-size:.64rem;color:#777;margin-bottom:2px;}
+  .role-item select{width:100%;padding:6px 4px;border:1px solid var(--line);border-radius:6px;font-size:.78rem;}
+  .role-item.changed{background:#fdece7;border:1.5px solid var(--danger);}
+  .role-item.changed select{border-color:var(--danger);color:var(--danger);font-weight:700;}
+  .changed-tag{color:var(--danger);font-weight:700;font-size:.62rem;}
+  .btn-swap{background:#fff;border:1.5px solid var(--danger);color:var(--danger);font-weight:700;font-size:.68rem;padding:3px;border-radius:6px;width:100%;height:100%;cursor:pointer;align-self:stretch;}
+  .btn-swap:active{background:#fdece7;}
+  .btn-swap.pending{background:transparent;color:var(--ok);border-color:var(--ok);}
+  .name-cell.changed-name{color:var(--danger) !important;}
+  .history-table{width:100%;border-collapse:collapse;font-size:.78rem;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(13,59,140,.06);}
+  .history-table th{background:var(--sky);color:var(--navy-deep);padding:7px 6px;font-size:.7rem;}
+  .history-table td{padding:6px;border-bottom:1px solid #f0f0f0;font-size:.76rem;}
+  .history-empty{text-align:center;color:#999;padding:20px;font-size:.8rem;}
+  .swap-arrow{color:#999;margin:0 3px;}
+  .swap-old{color:#999;text-decoration:line-through;}
+  .swap-new{color:var(--danger);font-weight:700;}
+
+  /* --- Work tab (bed table) --- */
+  .shift-label{font-size:.72rem;font-weight:700;color:#fff;padding:5px 10px;margin:0 4px;}
+  .shift-label.shift-ดึก{background:var(--shift-night);}
+  .shift-label.shift-เช้า{background:var(--shift-morn);}
+  .shift-label.shift-บ่าย{background:var(--shift-aft);}
+  .scroll-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-top:none;margin:0 4px;}
+  table.sheet-table{width:100%;min-width:760px;border-collapse:collapse;font-size:.8rem;background:#fff;}
+  table.sheet-table th{background:var(--sky);color:var(--navy-deep);padding:6px 4px;font-size:.66rem;border:1px solid var(--line);white-space:nowrap;}
+  table.sheet-table td{padding:3px;border:1px solid var(--line);text-align:center;vertical-align:middle;}
+  table.sheet-table select, table.sheet-table input[type=text]{
+    width:100%;padding:6px 5px;border:1px solid var(--line);border-radius:5px;font-size:.78rem;font-family:inherit;min-width:60px;
+  }
+  table.sheet-table input.bed-patient{min-width:150px;}
+  table.sheet-table input.bed-diag{min-width:110px;}
+  table.sheet-table select.bed-num{min-width:36px;padding:6px 1px;}
+  table.sheet-table select.bed-ptype{min-width:42px;padding:6px 1px;font-size:.7rem;}
+  table.sheet-table select.bed-infect{min-width:38px;padding:6px 1px;font-size:.64rem;}
+  .name-cell{font-weight:700;color:var(--navy-deep);font-size:.76rem;white-space:nowrap;}
+  .name-cell.empty{color:#bbb;font-weight:400;font-style:italic;}
+  table.sheet-table input.grp-brk, table.sheet-table input.fixed-brk{min-width:42px;text-align:center;}
+  .duty-cell{font-size:.7rem;color:#444;text-align:left !important;line-height:1.35;max-width:140px;white-space:normal;padding:5px 6px !important;}
+  .role-cell{font-weight:700;color:var(--navy-deep);white-space:nowrap;font-size:.68rem;padding-left:4px !important;padding-right:4px !important;}
+  tr.grp-even td{background:#ffffff;}
+  tr.grp-odd td{background:#f2f6fd;}
+  .fixed-row td{background:#fbfbfd;}
+  tr.row-housekeeper td{background:#fdf3e7;}
+  tr.row-housekeeper .role-cell{color:var(--amber);}
+  tr.row-clerk td{background:#fdece7;}
+  tr.row-clerk .role-cell{color:#c4551f;}
+  tr.row-na td{background:#eaf5ee;}
+  tr.row-na .role-cell{color:var(--ok);}
+  tr.row-worker td{background:#f1eef8;}
+  tr.row-worker .role-cell{color:#6b4fa0;}
+
+  /* --- summary --- */
+  .summary-table{width:100%;border-collapse:collapse;font-size:.8rem;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(13,59,140,.06);}
+  .summary-table th{background:var(--sky);color:var(--navy-deep);padding:8px 6px;font-size:.74rem;}
+  .summary-table td{padding:7px 6px;border-bottom:1px solid #f0f0f0;}
+  .bar-wrap{display:flex;align-items:center;gap:6px;}
+  .bar-bg{flex:1;background:#eef1f8;border-radius:6px;height:10px;overflow:hidden;}
+  .bar-fill{height:100%;border-radius:6px;}
+  .count-num{width:20px;text-align:right;font-weight:700;font-size:.76rem;}
+  .avg-line{font-size:.72rem;color:#777;margin:10px 2px;}
+  .tag-over{color:var(--danger);font-weight:700;}
+  .tag-under{color:var(--ok);font-weight:700;}
+  .tag-ok{color:#888;}
+  .export-btn{display:block;width:calc(100% - 16px);background:var(--navy);color:#fff;border:none;border-radius:10px;padding:12px;font-size:.85rem;font-weight:700;margin:14px 8px 0;cursor:pointer;}
+  .print-btn{display:block;width:calc(100% - 8px);background:#fff;border:1.5px solid var(--navy);color:var(--navy-deep);border-radius:7px;padding:5px;font-size:.7rem;font-weight:700;margin:0 4px 10px;cursor:pointer;}
+  .print-btn:active{background:var(--sky);}
+
+  .print-report{ display:none; }
+  .report-title{ font-weight:700; font-size:1rem; margin:0 0 10px; }
+  .report-shift-title{ font-weight:700; font-size:.84rem; margin:12px 0 4px; }
+  table.report-table{ width:100%; border-collapse:collapse; font-size:.74rem; }
+  table.report-table th, table.report-table td{ border:1px solid #999; padding:3px 5px; text-align:center; }
+  table.report-table th{ background:#eee; }
+  .chg{ color:#c00; font-weight:700; }
+
+  @media print {
+    body{background:#fff;}
+    header, details.settings, nav.tabs, .jumpbar, .print-btn, .btn-swap, .work-daypicker, .note{ display:none !important; }
+    section.panel{ display:none !important; }
+    section.panel.active{ display:block !important; }
+    main{ padding:0; max-width:none; }
+    #assign-days, #work-days{ display:none !important; }
+    .print-report{ display:none !important; }
+    table.report-table{ font-size:.68rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="back" href="index.html">‹ กลับเมนูหลัก</a>
+  <h1>🗓️ จัดเวร — RCU 1</h1>
+  <p>Assign ชื่อ และ มอบหมายงาน อยู่ในไฟล์เดียวกัน สลับได้ด้วยแท็บ</p>
+</header>
+
+<details class="settings">
+  <summary>ตั้งค่า (เดือน / รายชื่อ / หน้าที่พิเศษ)</summary>
+  <div class="settings-body">
+    <div class="settings-row">
+      <div class="field"><label>เดือน</label><select id="month-select"></select></div>
+      <div class="field"><label>ปี พ.ศ.</label><input type="number" id="year-input" value="2569" style="width:80px"></div>
+      <div class="field"><label>จำนวนวัน</label>
+        <select id="num-days"><option>28</option><option>29</option><option>30</option><option selected>31</option></select>
+      </div>
+    </div>
+    <div class="roster-card">
+      <h4>อัตราแต้ม P4P — Incharge (อ้างอิงไฟล์ p4p_RCU, วุฒิ ป.ตรี)</h4>
+      <div class="settings-row" style="margin-bottom:0;">
+        <div class="field"><label>เช้า (แต้ม/ครั้ง)</label><input type="number" step="0.1" id="rate-morning" value="37.8" style="width:80px"></div>
+        <div class="field"><label>บ่าย/ดึก (แต้ม/ครั้ง)</label><input type="number" step="0.1" id="rate-other" value="25.2" style="width:80px"></div>
+      </div>
+      <div class="persist-note">ไฟล์ P4P จริงรวมเวรบ่าย+ดึกเป็นอัตราเดียวกัน — ถ้าวุฒิ/อัตราของหน่วยงานเปลี่ยน แก้ตัวเลขนี้ได้เลย</div>
+    </div>
+    <div class="roster-card">
+      <h4>พยาบาล (Incharge / Member1-3 / แม่บ้าน)</h4>
+      <textarea id="roster-rn">ผ่องนภา, รวิวรรณ, พนิดา, กรรณิกา, มงคล, วรัญญา, ลลิดา, กันยารัตน์, เยาวลักษณ์, ศรีสุดา, อติพร, นันทวี, จิราภรณ์, สุภรัตน์, สุลักษณา, ระพีภัทร, กมลพรรณ</textarea>
+    </div>
+    <div class="roster-card">
+      <h4>NA (เฉพาะหน้ามอบหมายงาน)</h4>
+      <textarea id="roster-na">วนิดา, ยุพาพร, ดวงกมล, แวววิไล</textarea>
+    </div>
+    <div class="roster-card">
+      <h4>คนงาน (เฉพาะหน้ามอบหมายงาน)</h4>
+      <textarea id="roster-wk">ชนะชัย, จันทิมา, สุภชัย, สุภไชย</textarea>
+    </div>
+    <h4 style="margin:14px 0 6px;font-size:.85rem;color:var(--navy-deep)">หน้าที่พิเศษ — กำหนดครั้งเดียว แยกตามเวร</h4>
+    <div id="duty-settings"></div>
+
+    <h4 style="margin:14px 0 6px;font-size:.85rem;color:var(--navy-deep)">คำนวณคะแนน P4P จากจำนวนครั้ง Incharge</h4>
+    <div class="roster-card">
+      <div class="settings-row">
+        <div class="field"><label>เวลาเช้า (นาที)</label><input type="number" id="p4p-time-morning" value="180" style="width:70px"></div>
+        <div class="field"><label>เวลาบ่าย/ดึก (นาที)</label><input type="number" id="p4p-time-other" value="120" style="width:70px"></div>
+        <div class="field"><label>ทักษะ/ความซับซ้อน (เท่า)</label><input type="number" step="0.05" id="p4p-skill" value="1.5" style="width:70px"></div>
+        <div class="field"><label>ตัวคูณวุฒิ</label><input type="number" step="0.01" id="p4p-qual" value="0.14" style="width:70px"></div>
+      </div>
+      <small>ค่าเริ่มต้นตามไฟล์ p4p_RCU จริง (วุฒิ ป.ตรี) — แก้ได้ถ้าตำแหน่ง/วุฒิต่างจากนี้</small>
+    </div>
+
+    <button class="btn-primary" id="btn-generate">บันทึกการตั้งค่า</button>
+    <div class="persist-note">ข้อมูลที่กรอกไว้แล้ว (ชื่อ/เตียง/ผู้ป่วย ฯลฯ) จะไม่หายเมื่อกดปุ่มนี้ — จะหายเฉพาะตอนปิดแท็บ/รีเฟรชหน้าเว็บเท่านั้น</div>
+  </div>
+</details>
+
+<nav class="tabs">
+  <button data-tab="assign" class="active">🧭 Assign</button>
+  <button data-tab="work">🛏️ มอบหมาย</button>
+  <button data-tab="summary">📊 สรุป</button>
+  <button data-tab="history">📜 ประวัติ</button>
+</nav>
+
+<div class="jumpbar" id="jumpbar">
+  <label>ไปวันที่</label>
+  <select id="jump-select"></select>
+</div>
+
+<main>
+
+<section class="panel active" id="assign">
+  <button class="print-btn" id="btn-print-assign">📥 ดาวน์โหลด PDF (แนวตั้ง — ทุกวัน)</button>
+  <div id="assign-days"></div>
+  <div id="assign-print-report" class="print-report"></div>
+</section>
+
+<section class="panel" id="work">
+  <button class="print-btn" id="btn-print-work">📥 ดาวน์โหลด PDF (แนวนอน — วันนี้)</button>
+  <div class="work-daypicker" style="display:flex;align-items:center;gap:8px;margin:0 4px 10px;">
+    <label style="font-size:.74rem;color:#666;">วัน</label>
+    <input type="number" id="work-day-input" min="1" value="1" style="width:64px;padding:7px 6px;border:1px solid var(--line);border-radius:7px;">
+    <span style="font-size:.72rem;color:#999;">(แสดงเวรดึก/เช้า/บ่าย ของวันนี้เท่านั้น)</span>
+  </div>
+  <div id="work-days"></div>
+  <div id="work-print-report" class="print-report"></div>
+</section>
+
+<section class="panel" id="summary">
+  <div id="summary-content"></div>
+</section>
+
+<section class="panel" id="history">
+  <div id="history-content"></div>
+</section>
+
+</main>
+
+<script>
+const SHIFTS = ["ดึก","เช้า","บ่าย"];
+const SHIFT_COLOR = { "ดึก":"#3a4a8f", "เช้า":"#c47a1f", "บ่าย":"#1f7a4d" };
+const PTYPES = ["5","4a","3a","3b"];
+const ROLES = ["Incharge","Member1","Member2","Member3"];
+const ROLE_LABELS = { Incharge:"Incharge", Member1:"Member 1", Member2:"Member 2", Member3:"Member 3" };
+const FIXED_KEYS = ["housekeeper"];
+const FIXED_LABELS = { housekeeper:"แม่บ้าน" };
+const WORK_ONLY_KEYS = ["clerk","na","worker"];
+const WORK_ONLY_LABELS = { clerk:"เสมียน", na:"NA", worker:"คนงาน" };
+const WORK_ONLY_RESTRICT = { clerk: ["เช้า"] }; // only shows on this shift; keys absent here show every shift
+const MONTH_NAMES = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+const BED_NUMBERS = [1,2,3,4,5,6,7,8];
+
+const DEFAULT_DUTY_SEED = {
+  Incharge: "ลงยอด, Assign, บันทึกเหตุการณ์, เบิกยาทุกวัน จ,พ,ศ",
+  Member1: "OK รถ Emergency, OK รถ CPR",
+  Member2: "OK ยาเสพติด",
+  Member3: "ตรวจสอบและ Clear stock ยา",
+  housekeeper: "ลง IC, เบิกน้ำเกลือ, เปลี่ยนสาย Ventilator, OK.ของใช้, เตรียมรถหัตถการ, เช็ดอุณหภูมิตู้เย็น",
+  clerk: "",
+  na: "ติดตามยา, ส่ง consult, ส่ง Lab",
+  worker: "ทำความสะอาดตู้โต๊ะข้างเตียง, เทขยะ, เบิกและนับผ้า",
+};
+const DEFAULT_BREAK = { Incharge:"12.00", Member1:"11.00", Member2:"12.00", Member3:"11.00", housekeeper:"12.00", clerk:"12.00", na:"11.00", worker:"12.00" };
+
+let NUM_DAYS = 31;
+let ROSTER_RN = [];
+let RATE_MORNING = 37.8;
+let RATE_OTHER = 25.2;
+let ROSTER_NA = [];
+let ROSTER_WK = [];
+let assign = {}; // ONE shared object for names + beds, used by both tabs
+let currentWorkDay = 1;
+let DUTY_CONFIG = {};
+SHIFTS.forEach(sh=>{
+  DUTY_CONFIG[sh] = {};
+  ROLES.concat(FIXED_KEYS).concat(WORK_ONLY_KEYS).forEach(r=> DUTY_CONFIG[sh][r] = DEFAULT_DUTY_SEED[r] || "");
+});
+let currentTab = "assign";
+let changeLog = []; // {day, shift, role, from, to, time}
+
+function parseRoster(text){ return text.split(",").map(s=>s.trim()).filter(Boolean); }
+function initMonthSelect(){
+  const sel = document.getElementById("month-select");
+  sel.innerHTML = MONTH_NAMES.map((m,i)=>`<option value="${i}" ${i===7?"selected":""}>${m}</option>`).join("");
+}
+function getMonthLabel(){
+  const mIdx = parseInt(document.getElementById("month-select").value);
+  const y = document.getElementById("year-input").value;
+  return `${MONTH_NAMES[mIdx]} ${y}`;
+}
+
+/* ---------------- data model (shared) ---------------- */
+function freshGroup(role){
+  return { role, name:"",
+    beds:[ {bed:"",patient:"",diag:"",ptype:"",infect:""}, {bed:"",patient:"",diag:"",ptype:"",infect:""} ] };
+}
+function freshDayShift(){
+  return { groups: ROLES.map(freshGroup), housekeeper:{name:""}, clerk:{name:""}, na:{name:""}, worker:{name:""}, baseline:null, pendingSwap:false, swappedRoles:{} };
+}
+// true if this role is currently mid-swap (live preview) OR was swapped in a past commit for this day/shift
+function isRoleChanged(rec, role, currentName){
+  if(rec.swappedRoles && rec.swappedRoles[role]) return true;
+  if(rec.pendingSwap && rec.baseline && rec.baseline[role] !== currentName) return true;
+  return false;
+}
+function ensureAssignDays(){
+  for(let d=1; d<=NUM_DAYS; d++){
+    if(!assign[d]) assign[d] = {};
+    SHIFTS.forEach(sh=>{
+      if(!assign[d][sh]) assign[d][sh] = freshDayShift();
+    });
+  }
+}
+
+function buildOptions(list, selected){
+  let html = `<option value="">-</option>`;
+  list.forEach(name=>{
+    html += `<option value="${name}" ${name===selected?"selected":""}>${name}</option>`;
+  });
+  return html;
+}
+function buildBedOptions(selected){
+  let html = `<option value="">-</option>`;
+  BED_NUMBERS.forEach(n=>{
+    html += `<option value="${n}" ${String(n)===String(selected)?"selected":""}>${n}</option>`;
+  });
+  return html;
+}
+function buildPtypeOptions(selected){
+  let html = `<option value="">-</option>`;
+  PTYPES.forEach(pt=>{
+    html += `<option value="${pt}" ${pt===selected?"selected":""}>${pt}</option>`;
+  });
+  return html;
+}
+function buildInfectOptions(selected){
+  const opts = [ {v:"ไม่ติดเชื้อ", l:"ไม่ติด"}, {v:"ติดเชื้อ", l:"ติด"} ];
+  let html = `<option value="">-</option>`;
+  opts.forEach(o=>{
+    html += `<option value="${o.v}" ${o.v===selected?"selected":""}>${o.l}</option>`;
+  });
+  return html;
+}
+function nameCellHtml(name, changed){
+  if(!name) return `<span class="name-cell empty">ยังไม่ได้ assign</span>`;
+  return `<span class="name-cell${changed?" changed-name":""}">${name}</span>`;
+}
+
+/* ---------------- settings: duty editor ---------------- */
+function renderDutySettings(){
+  const el = document.getElementById("duty-settings");
+  let html = "";
+  SHIFTS.forEach(sh=>{
+    html += `<div class="duty-shift-card shift-${sh}"><h4>เวร${sh}</h4>`;
+    ROLES.forEach(role=>{
+      html += `<div class="duty-field"><label>${ROLE_LABELS[role]}</label>
+        <textarea class="duty-input" data-shift="${sh}" data-role="${role}">${DUTY_CONFIG[sh][role]}</textarea></div>`;
+    });
+    if(sh === "เช้า"){
+      FIXED_KEYS.forEach(key=>{
+        html += `<div class="duty-field"><label>${FIXED_LABELS[key]}</label>
+          <textarea class="duty-input" data-shift="${sh}" data-role="${key}">${DUTY_CONFIG[sh][key]}</textarea></div>`;
+      });
+    }
+    WORK_ONLY_KEYS.forEach(key=>{
+      const restrict = WORK_ONLY_RESTRICT[key];
+      if(restrict && !restrict.includes(sh)) return; // matches the work-tab roster exactly (e.g. clerk = เช้า only)
+      html += `<div class="duty-field"><label>${WORK_ONLY_LABELS[key]}</label>
+        <textarea class="duty-input" data-shift="${sh}" data-role="${key}">${DUTY_CONFIG[sh][key]}</textarea></div>`;
+    });
+    html += `</div>`;
+  });
+  el.innerHTML = html;
+}
+function readDutySettings(){
+  document.querySelectorAll(".duty-input").forEach(ta=>{
+    DUTY_CONFIG[ta.dataset.shift][ta.dataset.role] = ta.value;
+  });
+}
+
+/* ---------------- tab 1: Assign In-charge ---------------- */
+function renderAssignDays(){
+  const monthName = getMonthLabel();
+  let html = "";
+  for(let d=1; d<=NUM_DAYS; d++){
+    html += `<div id="assignday-${d}"><div class="day-heading">วันที่ ${d} เดือน ${monthName}</div>`;
+    SHIFTS.forEach(shift=>{
+      const rec = assign[d][shift];
+      html += `<div class="shift-card"><span class="shift-title ${shift}">เวร${shift}</span><div class="role-grid">`;
+      rec.groups.forEach((g, gi)=>{
+        const changed = isRoleChanged(rec, g.role, g.name);
+        html += `<div class="role-item${changed?" changed":""}"><label>${ROLE_LABELS[g.role]}${changed?' <span class="changed-tag">🔴 เปลี่ยนแล้ว</span>':""}</label>
+          <select class="role-select" data-day="${d}" data-shift="${shift}" data-gi="${gi}">${buildOptions(ROSTER_RN, g.name)}</select></div>`;
+      });
+      FIXED_KEYS.forEach(key=>{
+        html += `<div class="role-item"><label>${FIXED_LABELS[key]}</label>
+          <select class="fixed-select" data-day="${d}" data-shift="${shift}" data-key="${key}">${buildOptions(ROSTER_RN, rec[key].name)}</select></div>`;
+      });
+      const btnLabel = rec.pendingSwap ? "✅ Commit" : "🔁 เปลี่ยนเวร";
+      html += `<button class="btn-swap${rec.pendingSwap?" pending":""}" data-day="${d}" data-shift="${shift}">${btnLabel}</button>`;
+      html += `</div></div>`;
+    });
+    html += `</div>`;
+  }
+  document.getElementById("assign-days").innerHTML = html;
+}
+document.getElementById("assign-days").addEventListener("change", (e)=>{
+  const t = e.target;
+  const day = t.dataset.day, shift = t.dataset.shift;
+  if(!day || !shift) return;
+  const rec = assign[day][shift];
+  if(t.classList.contains("role-select")){
+    rec.groups[t.dataset.gi].name = t.value;
+    const role = rec.groups[t.dataset.gi].role;
+    const changed = isRoleChanged(rec, role, t.value);
+    const item = t.closest(".role-item");
+    item.classList.toggle("changed", changed);
+    let tag = item.querySelector(".changed-tag");
+    if(changed && !tag){
+      item.querySelector("label").insertAdjacentHTML("beforeend", ' <span class="changed-tag">🔴 เปลี่ยนแล้ว</span>');
+    } else if(!changed && tag){
+      tag.remove();
+    }
+    if(Number(t.dataset.gi)===0) renderSummary();
+    syncWorkNameCells(day, shift);
+  } else if(t.classList.contains("fixed-select")){
+    rec[t.dataset.key].name = t.value;
+    syncWorkNameCells(day, shift);
+  }
+});
+document.getElementById("assign-days").addEventListener("click", (e)=>{
+  const btn = e.target.closest(".btn-swap");
+  if(!btn) return;
+  const day = btn.dataset.day, shift = btn.dataset.shift;
+  const rec = assign[day][shift];
+  const currentVals = {};
+  rec.groups.forEach(g=> currentVals[g.role] = g.name);
+
+  if(!rec.pendingSwap){
+    // 1st click: start tracking — snapshot current names, no log yet
+    rec.baseline = currentVals;
+    rec.pendingSwap = true;
+  } else {
+    // 2nd click (Commit): log whatever actually changed since the snapshot, then reset
+    const now = new Date();
+    const timeStr = now.toLocaleString("th-TH", {day:"numeric", month:"short", hour:"2-digit", minute:"2-digit"});
+    ROLES.forEach(role=>{
+      if(rec.baseline[role] !== currentVals[role]){
+        changeLog.push({
+          day, shift, role,
+          from: rec.baseline[role] || "(ว่าง)",
+          to: currentVals[role] || "(ว่าง)",
+          time: timeStr
+        });
+        rec.swappedRoles[role] = true; // persists after commit — red marker stays
+      }
+    });
+    if(currentTab === "history") renderHistory();
+    rec.baseline = null;
+    rec.pendingSwap = false;
+  }
+  renderAssignDays();
+  syncWorkNameCells(day, shift);
+});
+
+/* ---------------- tab 2: มอบหมายงาน (bed table) ---------------- */
+function buildShiftTable(day, shift){
+  const rec = assign[day][shift];
+  let html = `<div class="scroll-wrap"><table class="sheet-table" data-day="${day}" data-shift="${shift}"><tr>
+    <th>พยาบาล</th><th>ตำแหน่ง</th><th>เตียง</th><th>ชื่อผู้ป่วย</th><th>Dx</th>
+    <th>ประเภท</th><th>เชื้อ</th><th>หน้าที่พิเศษ</th><th>พัก</th>
+  </tr>`;
+
+  rec.groups.forEach((g, gi)=>{
+    const dutyText = DUTY_CONFIG[shift][g.role] || "";
+    const brk = DEFAULT_BREAK[g.role] || "";
+    g.beds.forEach((bed, bi)=>{
+      html += `<tr class="${gi % 2 === 0 ? "grp-even" : "grp-odd"}">`;
+      if(bi===0){
+        const changed = isRoleChanged(rec, g.role, g.name);
+        html += `<td rowspan="2" class="name-slot" data-gi="${gi}">${nameCellHtml(g.name, changed)}</td>`;
+        html += `<td rowspan="2" class="role-cell">${ROLE_LABELS[g.role]}</td>`;
+      }
+      html += `<td><select class="bed-num" data-day="${day}" data-shift="${shift}" data-gi="${gi}" data-bi="${bi}">${buildBedOptions(bed.bed)}</select></td>`;
+      html += `<td><input type="text" class="bed-patient" data-day="${day}" data-shift="${shift}" data-gi="${gi}" data-bi="${bi}" value="${bed.patient}" placeholder="ชื่อ-สกุล"></td>`;
+      html += `<td><input type="text" class="bed-diag" data-day="${day}" data-shift="${shift}" data-gi="${gi}" data-bi="${bi}" value="${bed.diag}" placeholder="Dx"></td>`;
+      html += `<td><select class="bed-ptype" data-day="${day}" data-shift="${shift}" data-gi="${gi}" data-bi="${bi}">${buildPtypeOptions(bed.ptype)}</select></td>`;
+      html += `<td><select class="bed-infect" data-day="${day}" data-shift="${shift}" data-gi="${gi}" data-bi="${bi}">${buildInfectOptions(bed.infect)}</select></td>`;
+      if(bi===0){
+        html += `<td rowspan="2" class="duty-cell">${dutyText}</td>`;
+        html += `<td rowspan="2"><input type="text" class="grp-brk" value="${brk}" readonly></td>`;
+      }
+      html += `</tr>`;
+    });
+  });
+
+  if(shift === "เช้า"){
+    FIXED_KEYS.forEach(key=>{
+      const dutyText = DUTY_CONFIG[shift][key] || "";
+      const brk = DEFAULT_BREAK[key] || "";
+      html += `<tr class="fixed-row row-${key}">
+        <td class="name-slot" data-key="${key}">${nameCellHtml(rec[key].name)}</td>
+        <td class="role-cell">${FIXED_LABELS[key]}</td>
+        <td colspan="6" class="duty-cell">${dutyText}</td>
+        <td><input type="text" class="fixed-brk" value="${brk}" readonly></td>
+      </tr>`;
+    });
+  }
+
+  const workRosterList = { clerk: ROSTER_RN, na: ROSTER_NA, worker: ROSTER_WK };
+  WORK_ONLY_KEYS.forEach(key=>{
+    const restrict = WORK_ONLY_RESTRICT[key];
+    if(restrict && !restrict.includes(shift)) return; // skip on shifts this role doesn't apply to
+    const dutyText = DUTY_CONFIG[shift][key] || "";
+    const brk = DEFAULT_BREAK[key] || "";
+    html += `<tr class="fixed-row row-${key}">
+      <td><select class="work-fixed-select" data-day="${day}" data-shift="${shift}" data-key="${key}">${buildOptions(workRosterList[key], rec[key].name)}</select></td>
+      <td class="role-cell">${WORK_ONLY_LABELS[key]}</td>
+      <td colspan="6" class="duty-cell">${dutyText}</td>
+      <td><input type="text" class="fixed-brk" value="${brk}" readonly></td>
+    </tr>`;
+  });
+
+  html += `</table></div>`;
+  return html;
+}
+function renderWorkDay(){
+  const input = document.getElementById("work-day-input");
+  let d = parseInt(input.value) || 1;
+  if(d < 1) d = 1;
+  if(d > NUM_DAYS) d = NUM_DAYS;
+  input.value = d;
+  currentWorkDay = d;
+  const monthName = getMonthLabel();
+  let html = `<div id="workday-${d}"><div class="day-heading">วันที่ ${d} เดือน ${monthName}</div>`;
+  SHIFTS.forEach(shift=>{
+    html += `<div class="shift-label shift-${shift}">เวร${shift}</div>${buildShiftTable(d, shift)}`;
+  });
+  html += `</div>`;
+  document.getElementById("work-days").innerHTML = html;
+}
+// live-update the name display in the work tab without a full re-render
+function syncWorkNameCells(day, shift){
+  const table = document.querySelector(`#work-days table[data-day="${day}"][data-shift="${shift}"]`);
+  if(!table) return;
+  const rec = assign[day][shift];
+  table.querySelectorAll(".name-slot").forEach(td=>{
+    if(td.dataset.gi !== undefined && td.dataset.gi !== ""){
+      const g = rec.groups[td.dataset.gi];
+      const changed = isRoleChanged(rec, g.role, g.name);
+      td.innerHTML = nameCellHtml(g.name, changed);
+    } else if(td.dataset.key){
+      td.innerHTML = nameCellHtml(rec[td.dataset.key].name);
+    }
+  });
+}
+document.getElementById("work-days").addEventListener("change", (e)=>{
+  const t = e.target;
+  const day = t.dataset.day, shift = t.dataset.shift;
+  if(!day || !shift) return;
+  const rec = assign[day][shift];
+  if(t.classList.contains("bed-num")){
+    const newVal = t.value;
+    if(newVal !== ""){
+      const dup = rec.groups.some((g, gIdx)=> g.beds.some((b, bIdx)=>
+        !(gIdx == t.dataset.gi && bIdx == t.dataset.bi) && b.bed !== "" && String(b.bed) === String(newVal)
+      ));
+      if(dup){
+        alert(`เตียง ${newVal} ถูกใช้ไปแล้วในเวรนี้ กรุณาเลือกเตียงอื่น`);
+        t.value = rec.groups[t.dataset.gi].beds[t.dataset.bi].bed || "";
+        return;
+      }
+    }
+    rec.groups[t.dataset.gi].beds[t.dataset.bi].bed = newVal;
+  }
+  else if(t.classList.contains("bed-ptype")) rec.groups[t.dataset.gi].beds[t.dataset.bi].ptype = t.value;
+  else if(t.classList.contains("bed-infect")) rec.groups[t.dataset.gi].beds[t.dataset.bi].infect = t.value;
+  else if(t.classList.contains("work-fixed-select")) rec[t.dataset.key].name = t.value;
+});
+document.getElementById("work-days").addEventListener("input", (e)=>{
+  const t = e.target;
+  const day = t.dataset.day, shift = t.dataset.shift;
+  if(!day || !shift) return;
+  const rec = assign[day][shift];
+  if(t.classList.contains("bed-patient")) rec.groups[t.dataset.gi].beds[t.dataset.bi].patient = t.value;
+  else if(t.classList.contains("bed-diag")) rec.groups[t.dataset.gi].beds[t.dataset.bi].diag = t.value;
+});
+
+/* ---------------- jump-to-day (aware of active tab) ---------------- */
+function renderJumpSelect(){
+  const sel = document.getElementById("jump-select");
+  let html = "";
+  for(let d=1; d<=NUM_DAYS; d++) html += `<option value="${d}">วันที่ ${d}</option>`;
+  sel.innerHTML = html;
+}
+document.getElementById("jump-select").addEventListener("change", (e)=>{
+  const prefix = currentTab === "work" ? "workday-" : "assignday-";
+  const el = document.getElementById(prefix + e.target.value);
+  if(el) el.scrollIntoView({behavior:"smooth", block:"start"});
+});
+
+/* ---------------- tab 3: summary ---------------- */
+function computeInchargeCounts(){
+  const counts = {};
+  ROSTER_RN.forEach(name=> counts[name] = { "ดึก":0,"เช้า":0,"บ่าย":0, total:0 });
+  for(let d=1; d<=NUM_DAYS; d++){
+    SHIFTS.forEach(sh=>{
+      const name = assign[d][sh].groups[0].name;
+      if(name && counts[name]){ counts[name][sh]++; counts[name].total++; }
+    });
+  }
+  return counts;
+}
+function computeP4pPoints(c){
+  return (c["เช้า"] * RATE_MORNING) + ((c["ดึก"] + c["บ่าย"]) * RATE_OTHER);
+}
+function renderSummary(){
+  const el = document.getElementById("summary-content");
+  const counts = computeInchargeCounts();
+  const nStaff = ROSTER_RN.length || 1;
+  const avgPerShift = NUM_DAYS / nStaff;
+  const maxCount = Math.max(1, ...Object.values(counts).flatMap(c=>SHIFTS.map(sh=>c[sh])));
+
+  let html = `<div class="avg-line">ค่าเฉลี่ยเป้าหมาย ≈ <b>${avgPerShift.toFixed(1)}</b> ครั้ง/เวร/คน (จาก ${NUM_DAYS} วัน ÷ ${nStaff} คน) — คะแนน P4P: เช้า ${RATE_MORNING} / บ่าย-ดึก ${RATE_OTHER} แต้มต่อครั้ง</div>`;
+  html += `<table class="summary-table"><tr><th>ชื่อ</th>`;
+  SHIFTS.forEach(sh=> html += `<th style="color:${SHIFT_COLOR[sh]}">${sh}</th>`);
+  html += `<th>รวม</th><th>แต้ม P4P</th></tr>`;
+
+  ROSTER_RN.forEach(name=>{
+    const c = counts[name];
+    html += `<tr><td>${name}</td>`;
+    SHIFTS.forEach(sh=>{
+      const v = c[sh];
+      const diff = v - avgPerShift;
+      let tagClass = "tag-ok";
+      if(diff >= 1) tagClass = "tag-over";
+      else if(diff <= -1) tagClass = "tag-under";
+      const pct = Math.round((v/maxCount)*100);
+      html += `<td><div class="bar-wrap">
+        <span class="count-num ${tagClass}">${v}</span>
+        <div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${SHIFT_COLOR[sh]}"></div></div>
+      </div></td>`;
+    });
+    const points = computeP4pPoints(c);
+    html += `<td style="font-weight:700">${c.total}</td><td style="font-weight:700;color:var(--navy-deep)">${points.toFixed(1)}</td></tr>`;
+  });
+  html += `</table>`;
+  html += `<button class="export-btn" id="btn-export-summary">📤 Export สรุปความถี่ + ประวัติแลกเวร (.xlsx)</button>`;
+  html += `<button class="export-btn" id="btn-export-p4p" style="background:var(--ok);">📤 Export P4P รายคน + สรุป (.xlsx)</button>`;
+  el.innerHTML = html;
+
+  document.getElementById("btn-export-summary").addEventListener("click", exportCombinedXlsx);
+  document.getElementById("btn-export-p4p").addEventListener("click", exportP4pWorkbook);
+}
+
+/* ---------------- P4P workbook export: 1 sheet per RN + สรุป, matches real template structure ---------------- */
+function sanitizeSheetName(name, usedNames){
+  let clean = (name || "ไม่ระบุชื่อ").replace(/[:\\\/\?\*\[\]]/g, "").trim();
+  if(clean.length > 28) clean = clean.slice(0, 28);
+  let finalName = clean;
+  let n = 2;
+  while(usedNames.has(finalName)){
+    finalName = `${clean.slice(0, 25)}(${n})`;
+    n++;
+  }
+  usedNames.add(finalName);
+  return finalName;
+}
+
+function colLetter(n){ // 0-indexed -> Excel column letter
+  let s=""; n++;
+  while(n>0){ let m=(n-1)%26; s=String.fromCharCode(65+m)+s; n=Math.floor((n-1)/26); }
+  return s;
+}
+
+// Exact replica of a real RN sheet from p4p_RCU.xlsx (rows/columns verified against the actual file).
+// Only the 2 Incharge rows (6,7) are filled from real data; every other cell matches the template
+// but is left blank where this tool has no data — same shape as the original, nothing invented.
+function buildExactPersonSheet(name, counts){
+  const monthName = getMonthLabel();
+  const ws = {};
+  const set = (addr, val)=>{ ws[addr] = { v: val, t: (typeof val === "number" ? "n" : "s") }; };
+
+  const title = "แบบฟอร์มบันทึกข้อมูลการปฏิบัติงานแบบรายกิจกรรม (Activity based) กลุ่มภารกิจด้านการพยาบาล โรงพยาบาลมหาราชนครราชสีมา";
+  set("A1", title); set("K1", title);
+
+  set("A2", "  ชื่อ-สกุล                                                                                       ตำแหน่ง  พยาบาลวิชาชีพ                     ");
+  set("C2", `${name} ตำแหน่งพยาบาลวิชาชีพ`);
+  set("D2", "วุฒิ  นักวิชาการ ป.ตรี ");
+  set("F2", "หอผู้ป่วย RCU                                          ");
+  set("I2", `ประจำเดือน ${monthName}`);
+  set("K2", "ชื่อ-สกุล                                                                                                          ");
+  set("M2", `${name} ตำแหน่งพยาบาลวิชาชีพ`);
+
+  set("A3","รหัส"); set("B3","ลำดับ"); set("C3","ภาระงาน"); set("D3","หน่วยนับปริมาณงาน");
+  set("E3","เวลาเฉลี่ยต่อ1 หน่วย(นาที)"); set("F3","จำนวนครั้งที่ทำ"); set("G3","ทักษะวิชาชีพ/ความซับซ้อน/ความเสี่ยง(เท่า)");
+  set("H3","คะแนนรวม(เวลาเฉลี่ยxน้ำหนักxปริมาณ)"); set("I3","วุฒิอ้างอิงนักวิชาการ ป.ตรี(0.14เท่า)"); set("J3","รวมแต้มคะแนนที่ได้(ตามวุฒิอ้างอิง)");
+  set("K3","รหัส"); set("L3","ลำดับ"); set("M3","ภาระงาน");
+  for(let d=1; d<=31; d++) set(colLetter(13+d)+"3", d); // N3.. = day numbers 1-31 (matches template; left unfilled below, same as the original file)
+
+  set("A5","งานบริหาร "); set("K5","งานบริหาร ");
+
+  const c = counts[name] || { "เช้า":0, "ดึก":0, "บ่าย":0, total:0 };
+  const countMorning = c["เช้า"];
+  const countOther = c["ดึก"] + c["บ่าย"];
+  const timeM=180, skillM=1.5, eduM=0.14;
+  const timeO=120, skillO=1.5, eduO=0.14;
+  const hM = timeM*countMorning*skillM, jM = Number((hM*eduM).toFixed(2));
+  const hO = timeO*countOther*skillO, jO = Number((hO*eduO).toFixed(2));
+
+  set("B6",1); set("C6","Incharge (ครั้ง) เวรเช้า IPD / ER : ward ICU / สามัญที่มีผู้ป่วย >20 คนขึ้นไป");
+  set("D6","ครั้ง"); set("E6",timeM); set("F6",countMorning); set("G6",skillM); set("H6",hM); set("I6",eduM); set("J6",jM);
+  set("L6",1); set("M6","Incharge (ครั้ง) เวรเช้า IPD / ER");
+  // mark the exact days this person covered เช้า Incharge — data we do have, matching the day columns already in the template
+  for(let d=1; d<=NUM_DAYS; d++){
+    if(assign[d]["เช้า"].groups[0].name === name) set(colLetter(13+d)+"6", 1);
+  }
+
+  set("B7",2); set("C7","Incharge (ครั้ง) เวรบ่าย/ดึก IPD/ER  : ward ICU / สามัญที่มีผู้ป่วย > 20 คนขึ้นไป");
+  set("D7","ครั้ง"); set("E7",timeO); set("F7",countOther); set("G7",skillO); set("H7",hO); set("I7",eduO); set("J7",jO);
+  set("L7",2); set("M7","Incharge (ครั้ง) เวรบ่าย/ดึก IPD/ER");
+  for(let d=1; d<=NUM_DAYS; d++){
+    const nightIsMe = assign[d]["ดึก"].groups[0].name === name;
+    const afternoonIsMe = assign[d]["บ่าย"].groups[0].name === name;
+    if(nightIsMe || afternoonIsMe) set(colLetter(13+d)+"7", 1);
+  }
+
+  set("B8",3); set("C8","วิเคราะห์ และสรุปรายงานตัวชี้วัดประจำเดือนในงานที่ได้รับมอบหมาย (2ชม./ครั้ง)");
+  set("D8","ครั้ง"); set("E8",120); set("F8",0); set("G8",1.5); set("H8",0); set("I8",0.14); set("J8",0);
+  set("L8",3); set("M8","วิเคราะห์ และสรุปรายงานตัวชี้วัดประจำเดือนในงานที่ได้รับมอบหมาย (3ชม./ครั้ง)");
+
+  const j9 = Number((jM+jO).toFixed(2));
+  set("C9","รวมแต้มภาระงานด้านบริหาร"); set("J9", j9);
+
+  set("A10","งานวิชาการ"); set("K10","งานวิชาการ");
+
+  const academic = [
+    ["ว4",  "ประชุมวิชาการ/ศึกษาดูงานนอกรพ. /ประชุมวิชาการภายในรพ (จำนวนชม.จริง/ครั้ง)", "ชม.", 60, 0.8,
+             "ประชุมวิชาการ/ศึกษาดูงานนอกรพ. /ประชุมวิชาการภายในรพ/ประชุมward (จำนวนชม.จริง/ครั้ง)"],
+    ["ว6",  "นำเสนอผลงาน(Paper,Poster)/วิทยากรบรรยายระดับรพ.ขึ้นไป รวมCQI,Innovation", "เรื่อง", 60, 3, null],
+    ["ว14", "ทำวิจัย (ชื่อแรก) 6ชม./เรื่องที่มีอยู่ในเดือน", "เรื่อง", 360, 10, null],
+    ["ว15", "ทำวิจัย (ชื่อที่ 2) 6ชม./เรื่องที่มีอยู่ในเดือน", "เรื่อง", 360, 3, null],
+    ["ว16", "ทำวิจัย (ชื่อที่ 3ขึ้นไป) 6ชม./เรื่องที่มีอยู่ในเดือน", "เรื่อง", 360, 2, null],
+    ["ว17", "ตีพิมพ์ผลงานวิจัยในวารสารในประเทศ (ชื่อแรก)6ชม./เรื่องที่พิมพ์ในเดือน", "เรื่อง", 360, 10, null],
+    ["ว18", "ตีพิมพ์ผลงานวิจัยในวารสารในประเทศ (ชื่อที่ 2)6ชม./เรื่องที่พิมพ์ในเดือน", "เรื่อง", 360, 3, null],
+    ["ว19", "ตีพิมพ์ผลงานวิจัยในวารสารในประเทศ (ชื่อที่ 3ขึ้นไป)6ชม./เรื่องที่พิมพ์ในเดือน", "เรื่อง", 360, 2, null],
+    ["ว26", "ประเมินตรวจ อวช.พยาบาล (1คน/1ชม.)", "คน", 60, 3, null],
+    ["ว34", "สอนงานบุคลากรตามที่ได้รับมอบหมาย (ไม่เกิน1เรื่อง/วัน)", "เรื่อง", 60, 1.5, null],
+    ["ว55", "งานกิจกรรมของรพ./งานบำรุงศิลปวัฒนธรรม จำนวนชม.จริง (หัวหน้าพยาบาลมอบหมาย)", "ชม.", 60, 1, null],
+    [null,  "เป็นผู้นำทีม Nursing Round / Clinical teaching / Nursing conference / CQI", "ครั้ง", 60, 2, null],
+    [null,  "เข้าร่วมกิจกรรม Nsg round /Nsg conference/Clinical teaching/12กิจกรรมทบทวน / CQI", "ครั้ง", 30, 1.5, null],
+    [null,  "เป็นผู้รับผิดชอบจัดโครงการอบรมต่างๆทั้งภายในและภายนอกรพ.(แนบโครงการ)", "เรื่อง", 420, 2, null],
+  ];
+  academic.forEach((item, i)=>{
+    const r = 11 + i;
+    const [code, text, unit, time, skill, mText] = item;
+    if(code){ set("A"+r, code); set("K"+r, code); }
+    set("B"+r, i+1); set("C"+r, text); set("D"+r, unit); set("E"+r, time); set("F"+r, 0); set("G"+r, skill); set("H"+r, 0); set("I"+r, 0.14); set("J"+r, 0);
+    set("L"+r, i+1); set("M"+r, mText || text);
+  });
+
+  set("C25","รวมแต้มภาระงานด้านวิชาการ"); set("J25", 0);
+  set("C26","รวมแต้มบริการ RN / ลงจำนวนวันทำงานจริง (ช่อง D26)");
+  set("D27","บริการ"); set("E27","บริหาร"); set("F27","วิชาการ"); set("G27","รวม"); set("H27","คะแนนประกัน"); set("I27","คะแนนส่วนต่าง");
+  set("C28","คะแนนการปฏิบัติงาน RN"); set("E28", j9); set("F28", 0);
+  set("E29", j9); set("F29", 0); set("H29", 1200);
+  set("F30","ลงชื่อ…………………………………………………………………………");
+  set("F31", `${name} ตำแหน่งพยาบาลวิชาชีพ`);
+
+  ws["!ref"] = `A1:${colLetter(13+31)}31`;
+  const cols = [{wch:6},{wch:5},{wch:48},{wch:9},{wch:10},{wch:9},{wch:10},{wch:10},{wch:9},{wch:10}];
+  for(let d=1; d<=31; d++) cols.push({wch:4});
+  ws["!cols"] = cols;
+
+  return { ws, totalPoints: j9 };
+}
+
+function buildP4pSummaryAoa(counts, personTotals){
+  const rows = [];
+  rows.push([`สรุปรายงานประจำเดือน ${getMonthLabel()} — หอผู้ป่วยหนักระบบทางเดินหายใจ (RCU)`]);
+  rows.push([]);
+  rows.push(["รหัส","รายชื่อ","ตำแหน่ง","บริการ","บริหาร (Incharge)","วิชาการ","รวมแต้ม","แต้มประกัน","คะแนนส่วนต่าง"]);
+  ROSTER_RN.forEach((name, i)=>{
+    const points = personTotals[name] || 0;
+    rows.push([`RN${i+1}`, name, "พยาบาลวิชาชีพ", "", points, "", "", 1200, ""]);
+  });
+  rows.push([]);
+  rows.push(["หมายเหตุ: \"บริการ\" \"วิชาการ\" \"รวมแต้ม\" \"คะแนนส่วนต่าง\" เว้นว่างไว้ — ไม่มีข้อมูลในเครื่องมือนี้ กรอกเองแล้วผลรวมจะครบ"]);
+  return rows;
+}
+
+function exportP4pWorkbook(){
+  const counts = computeInchargeCounts();
+  const wb = XLSX.utils.book_new();
+  const usedNames = new Set();
+  const personTotals = {};
+
+  ROSTER_RN.forEach(name=>{
+    const { ws, totalPoints } = buildExactPersonSheet(name, counts);
+    personTotals[name] = Number(totalPoints.toFixed(2));
+    XLSX.utils.book_append_sheet(wb, ws, sanitizeSheetName(name, usedNames));
+  });
+
+  const summaryRows = buildP4pSummaryAoa(counts, personTotals);
+  const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
+  wsSummary["!cols"] = [{wch:8},{wch:22},{wch:18},{wch:10},{wch:14},{wch:10},{wch:10},{wch:10},{wch:12}];
+  // put summary first, matching the request to open and see the overview immediately
+  XLSX.utils.book_append_sheet(wb, wsSummary, "สรุป");
+  wb.SheetNames.unshift(wb.SheetNames.pop());
+
+  XLSX.writeFile(wb, `P4P-RCU-${getMonthLabel()}.xlsx`);
+}
+
+/* ---------------- combined export: สรุปความถี่ (Sheet1) + ประวัติแลกเวร (Sheet2) in one .xlsx ---------------- */
+function exportCombinedXlsx(){
+  const counts = computeInchargeCounts();
+  const summaryRows = [["ชื่อ","ดึก","เช้า","บ่าย","รวม",`แต้ม P4P (เช้า×${RATE_MORNING}, บ่าย/ดึก×${RATE_OTHER})`]];
+  ROSTER_RN.forEach(name=>{
+    const c = counts[name];
+    summaryRows.push([name, c["ดึก"], c["เช้า"], c["บ่าย"], c.total, Number(computeP4pPoints(c).toFixed(1))]);
+  });
+  const ws1 = XLSX.utils.aoa_to_sheet(summaryRows);
+  ws1["!cols"] = [{wch:20},{wch:8},{wch:8},{wch:8},{wch:8},{wch:22}];
+
+  const historyRows = [["วัน","เวร","ตำแหน่ง","เปลี่ยนจาก","เปลี่ยนเป็น","เวลาที่บันทึก"]];
+  changeLog.forEach(c=> historyRows.push([c.day, c.shift, ROLE_LABELS[c.role], c.from, c.to, c.time]));
+  const ws2 = XLSX.utils.aoa_to_sheet(historyRows);
+  ws2["!cols"] = [{wch:6},{wch:8},{wch:12},{wch:18},{wch:18},{wch:18}];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws1, "สรุปความถี่");
+  XLSX.utils.book_append_sheet(wb, ws2, "ประวัติแลกเวร");
+  XLSX.writeFile(wb, `RCU-สรุปความถี่-ประวัติแลกเวร-${getMonthLabel()}.xlsx`);
+}
+
+/* ---------------- tab: ประวัติแลกเวร ---------------- */
+function renderHistory(){
+  const el = document.getElementById("history-content");
+  if(changeLog.length === 0){
+    el.innerHTML = `<div class="history-empty">ยังไม่มีการแลกเวร — เมื่อกด "🔁 เปลี่ยนเวร" แล้วมีชื่อเปลี่ยนจริง จะขึ้นที่นี่</div>`;
+    return;
+  }
+  let html = `<table class="history-table"><tr><th>วัน/เวร</th><th>ตำแหน่ง</th><th>เปลี่ยนจาก → เป็น</th><th>เวลาที่บันทึก</th></tr>`;
+  for(let i = changeLog.length - 1; i >= 0; i--){
+    const c = changeLog[i];
+    html += `<tr>
+      <td>วัน ${c.day}<br><span style="color:${SHIFT_COLOR[c.shift]}">เวร${c.shift}</span></td>
+      <td>${ROLE_LABELS[c.role]}</td>
+      <td><span class="swap-old">${c.from}</span><span class="swap-arrow">→</span><span class="swap-new">${c.to}</span></td>
+      <td>${c.time}</td>
+    </tr>`;
+  }
+  html += `</table>`;
+  html += `<button class="export-btn" id="btn-export-history">📤 Export สรุปความถี่ + ประวัติแลกเวร (.xlsx)</button>`;
+  el.innerHTML = html;
+
+  document.getElementById("btn-export-history").addEventListener("click", exportCombinedXlsx);
+}
+
+/* ---------------- generate / tabs ---------------- */
+function generateAll(){
+  ROSTER_RN = parseRoster(document.getElementById("roster-rn").value);
+  ROSTER_NA = parseRoster(document.getElementById("roster-na").value);
+  ROSTER_WK = parseRoster(document.getElementById("roster-wk").value);
+  NUM_DAYS = parseInt(document.getElementById("num-days").value) || 31;
+  RATE_MORNING = parseFloat(document.getElementById("rate-morning").value) || 37.8;
+  RATE_OTHER = parseFloat(document.getElementById("rate-other").value) || 25.2;
+  document.getElementById("work-day-input").max = NUM_DAYS;
+  readDutySettings();
+  ensureAssignDays();
+  renderJumpSelect();
+  renderAssignDays();
+  renderWorkDay();
+  renderSummary();
+}
+
+document.getElementById("work-day-input").addEventListener("input", renderWorkDay);
+document.getElementById("btn-generate").addEventListener("click", ()=>{
+  generateAll();
+  document.querySelector("details.settings").removeAttribute("open");
+});
+document.querySelectorAll("nav.tabs button").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll("nav.tabs button").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    document.querySelectorAll("section.panel").forEach(p=>p.classList.remove("active"));
+    document.getElementById(btn.dataset.tab).classList.add("active");
+    currentTab = btn.dataset.tab;
+    document.getElementById("jumpbar").style.display = (currentTab==="assign") ? "flex" : "none";
+    if(currentTab === "work") renderWorkDay();
+    if(currentTab === "summary") renderSummary();
+    if(currentTab === "history") renderHistory();
+  });
+});
+
+/* ---------------- PDF export (direct download, no browser print dialog) ---------------- */
+function escapeHtml(s){
+  return (s||"").toString().replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+// renders a hidden report container to canvas (keeps Thai text correct) then builds a multi-page PDF from it
+async function exportReportAsPdf(containerId, orientation, filename){
+  const el = document.getElementById(containerId);
+  const widthPx = orientation === "landscape" ? 1100 : 780;
+  el.style.cssText = `display:block; position:fixed; left:0; top:0; z-index:-1; background:#fff; width:${widthPx}px; padding:16px;`;
+  await new Promise(r => setTimeout(r, 60)); // let the browser lay it out before capturing
+  const canvas = await html2canvas(el, { scale:2, backgroundColor:"#ffffff" });
+  el.style.cssText = ""; // back to normal (hidden again via .print-report class)
+
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF(orientation, "mm", "a4");
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const imgWidth = pageWidth;
+  const imgHeight = canvas.height * imgWidth / canvas.width;
+  const imgData = canvas.toDataURL("image/png");
+
+  let heightLeft = imgHeight;
+  let position = 0;
+  pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+  heightLeft -= pageHeight;
+  while(heightLeft > 0){
+    position = heightLeft - imgHeight;
+    pdf.addPage();
+    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+  }
+  pdf.save(filename);
+}
+
+function buildAssignReportHtml(){
+  const monthName = getMonthLabel();
+  let html = `<div class="report-title">ตารางมอบหมาย Incharge / Member — ${monthName}</div>`;
+  html += `<table class="report-table"><tr><th>วัน</th><th>เวร</th><th>Incharge</th><th>Member1</th><th>Member2</th><th>Member3</th><th>แม่บ้าน</th></tr>`;
+  for(let d=1; d<=NUM_DAYS; d++){
+    SHIFTS.forEach(shift=>{
+      const rec = assign[d][shift];
+      html += `<tr><td>${d}</td><td>${shift}</td>`;
+      rec.groups.forEach(g=>{
+        const chg = rec.swappedRoles && rec.swappedRoles[g.role];
+        const val = escapeHtml(g.name) || "-";
+        html += `<td>${chg ? `<span class="chg">${val}</span>` : val}</td>`;
+      });
+      html += `<td>${escapeHtml(rec.housekeeper.name) || "-"}</td></tr>`;
+    });
+  }
+  html += `</table>`;
+  document.getElementById("assign-print-report").innerHTML = html;
+}
+
+function buildWorkReportHtml(day){
+  const monthName = getMonthLabel();
+  let html = `<div class="report-title">ใบมอบหมายงาน RCU 1 — วันที่ ${day} เดือน ${monthName}</div>`;
+  SHIFTS.forEach(shift=>{
+    const rec = assign[day][shift];
+    html += `<div class="report-shift-title">เวร${shift}</div>`;
+    html += `<table class="report-table"><tr><th>พยาบาล</th><th>ตำแหน่ง</th><th>เตียง</th><th>ชื่อผู้ป่วย</th><th>Dx</th><th>ประเภท</th><th>เชื้อ</th><th>พัก</th></tr>`;
+    rec.groups.forEach(g=>{
+      const chg = rec.swappedRoles && rec.swappedRoles[g.role];
+      const nameVal = escapeHtml(g.name) || "-";
+      const nameCell = chg ? `<span class="chg">${nameVal}</span>` : nameVal;
+      const brk = DEFAULT_BREAK[g.role] || "";
+      g.beds.forEach((bed, bi)=>{
+        html += `<tr>`;
+        if(bi===0){
+          html += `<td rowspan="2">${nameCell}</td><td rowspan="2">${ROLE_LABELS[g.role]}</td>`;
+        }
+        const infectShort = bed.infect === "ติดเชื้อ" ? "ติด" : (bed.infect === "ไม่ติดเชื้อ" ? "ไม่ติด" : "-");
+        html += `<td>${escapeHtml(bed.bed) || "-"}</td><td>${escapeHtml(bed.patient) || "-"}</td><td>${escapeHtml(bed.diag) || "-"}</td><td>${escapeHtml(bed.ptype) || "-"}</td><td>${infectShort}</td>`;
+        if(bi===0) html += `<td rowspan="2">${brk}</td>`;
+        html += `</tr>`;
+      });
+    });
+    if(shift === "เช้า"){
+      html += `<tr><td>${escapeHtml(rec.housekeeper.name) || "-"}</td><td>แม่บ้าน</td><td colspan="4"></td><td>${DEFAULT_BREAK.housekeeper}</td></tr>`;
+      html += `<tr><td>${escapeHtml(rec.clerk.name) || "-"}</td><td>เสมียน</td><td colspan="4"></td><td>${DEFAULT_BREAK.clerk}</td></tr>`;
+    }
+    html += `<tr><td>${escapeHtml(rec.na.name) || "-"}</td><td>NA</td><td colspan="4"></td><td>${DEFAULT_BREAK.na}</td></tr>`;
+    html += `<tr><td>${escapeHtml(rec.worker.name) || "-"}</td><td>คนงาน</td><td colspan="4"></td><td>${DEFAULT_BREAK.worker}</td></tr>`;
+    html += `</table>`;
+  });
+  document.getElementById("work-print-report").innerHTML = html;
+}
+
+document.getElementById("btn-print-assign").addEventListener("click", async (e)=>{
+  const btn = e.currentTarget;
+  const original = btn.textContent;
+  btn.textContent = "⏳ กำลังสร้าง PDF...";
+  btn.disabled = true;
+  buildAssignReportHtml();
+  await exportReportAsPdf("assign-print-report", "portrait", `Assign-Incharge-${getMonthLabel()}.pdf`);
+  btn.textContent = original;
+  btn.disabled = false;
+});
+document.getElementById("btn-print-work").addEventListener("click", async (e)=>{
+  const btn = e.currentTarget;
+  const original = btn.textContent;
+  btn.textContent = "⏳ กำลังสร้าง PDF...";
+  btn.disabled = true;
+  buildWorkReportHtml(currentWorkDay);
+  await exportReportAsPdf("work-print-report", "landscape", `มอบหมายงาน-วัน${currentWorkDay}.pdf`);
+  btn.textContent = original;
+  btn.disabled = false;
+});
+
+initMonthSelect();
+renderDutySettings();
+generateAll();
+</script>
+</body>
+</html>

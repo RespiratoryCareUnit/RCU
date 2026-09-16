@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0154ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="RCU1">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>RCU — เมนูหลัก</title>
+<style>
+  :root{
+    --navy:#0d3b8c; --navy-deep:#082a66; --sky:#e8f0fd; --paper:#fbfaf7;
+    --ink:#1c2333; --line:#d8dfef; --amber:#c47a1f; --ok:#1f7a4d; --teal:#0f7d84;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:"IBM Plex Sans Thai","Sarabun",system-ui,sans-serif;background:var(--paper);color:var(--ink);}
+  header{background:linear-gradient(135deg,var(--navy),var(--navy-deep));color:#fff;padding:26px 20px 22px;text-align:center;}
+  header .icon{font-size:2.2rem;}
+  header h1{margin:8px 0 4px;font-size:1.25rem;font-weight:700;}
+  header p{margin:0;font-size:.8rem;opacity:.85;}
+
+  main{max-width:520px;margin:0 auto;padding:20px 16px 40px;}
+  .menu-item{
+    display:flex;align-items:center;gap:14px;
+    background:#fff;border:1px solid var(--line);border-radius:16px;
+    padding:18px 16px;margin-bottom:14px;text-decoration:none;color:var(--ink);
+    box-shadow:0 1px 3px rgba(13,59,140,.06);
+    transition:transform .1s;
+  }
+  .menu-item:active{transform:scale(.98);}
+  .menu-item .num{
+    flex:0 0 auto;width:40px;height:40px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-weight:700;font-size:1rem;color:#fff;
+  }
+  .menu-item .body{flex:1;}
+  .menu-item .body h2{margin:0 0 3px;font-size:.98rem;}
+  .menu-item .body p{margin:0;font-size:.76rem;color:#777;line-height:1.4;}
+  .menu-item .arrow{font-size:1.2rem;color:#bbb;}
+
+  .item1 .num{background:var(--navy);}
+  .item2 .num{background:var(--amber);}
+  .item3 .num{background:var(--teal);}
+  .item4 .num{background:#6b4fa0;}
+
+  .tag{display:inline-block;font-size:.62rem;font-weight:700;padding:2px 7px;border-radius:20px;margin-left:6px;vertical-align:middle;}
+  .tag-live{background:#e3f3ea;color:var(--ok);}
+  .tag-new{background:#fff1e0;color:var(--amber);}
+  .tag-soon{background:#eee;color:#888;}
+
+  .section-label{font-size:.72rem;color:#999;text-transform:uppercase;letter-spacing:.04em;margin:22px 4px 8px;}
+  footer{text-align:center;font-size:.7rem;color:#aaa;padding:10px 16px 30px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="icon">🫁</div>
+  <h1>หอผู้ป่วย RCU</h1>
+  <p>เมนูหลัก — เลือกงานที่ต้องการเข้าใช้งาน</p>
+</header>
+
+<main>
+  <div class="section-label">งานประจำวัน</div>
+
+  <a class="menu-item item1" href="https://respiratorycareunit.github.io/RCU/" target="_blank" rel="noopener">
+    <div class="num">1</div>
+    <div class="body">
+      <h2>ลงทะเบียนผู้ป่วย <span class="tag tag-live">ใช้งานจริง</span></h2>
+      <p>รับ-จำหน่ายผู้ป่วย, Dashboard, คะแนน SAPS3/AKI, Foley catheter</p>
+    </div>
+    <div class="arrow">›</div>
+  </a>
+
+  <a class="menu-item item2" href="shift.html">
+    <div class="num">2</div>
+    <div class="body">
+      <h2>บันทึกเหตุการณ์รายวัน <span class="tag tag-new">ตัวอย่าง</span></h2>
+      <p>บุคลากร, สถิติผู้ป่วย, หัตถการ, เหตุการณ์ — export 3 ไฟล์ + PDF รายวัน</p>
+    </div>
+    <div class="arrow">›</div>
+  </a>
+
+  <a class="menu-item item3" href="assign.html">
+    <div class="num">3</div>
+    <div class="body">
+      <h2>จัดเวร (Assign) <span class="tag tag-new">ตัวอย่าง</span></h2>
+      <p>Assign In-charge, มอบหมายงาน, สรุปความถี่, ประวัติแลกเวร, Export P4P/PDF</p>
+    </div>
+    <div class="arrow">›</div>
+  </a>
+</main>
+
+<footer>ตัวอย่างต้นแบบสารบัญ — RCU Maharat Nakhon Ratchasima Hospital</footer>
+
+</body>
+</html>
