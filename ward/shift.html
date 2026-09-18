@@ -25,7 +25,6 @@
   header h1{margin:0;font-size:1.15rem;font-weight:700;}
   header p{margin:4px 0 0;font-size:.78rem;opacity:.85;}
   a.back{color:#cfe0ff;font-size:.75rem;text-decoration:none;}
-  .badge{display:inline-block;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);border-radius:20px;padding:2px 10px;font-size:.7rem;margin-top:8px;}
 
   .toprow{display:flex;gap:8px;padding:12px 16px;background:#fff;border-bottom:1px solid var(--line);flex-wrap:wrap;align-items:center;}
   .toprow label{font-size:.75rem;color:#555;display:block;margin-bottom:2px;}
@@ -40,7 +39,7 @@
   nav.tabs button{flex:0 0 auto;padding:11px 14px;background:none;border:none;font-size:.8rem;font-weight:600;color:#7a8399;cursor:pointer;white-space:nowrap;border-bottom:3px solid transparent;}
   nav.tabs button.active{color:var(--navy);border-bottom-color:var(--navy);}
 
-  main{padding:14px 16px 90px;max-width:720px;margin:0 auto;}
+  main{padding:14px 16px 28px;max-width:720px;margin:0 auto;}
   section.panel{display:none;}
   section.panel.active{display:block;}
 
@@ -97,7 +96,9 @@
   .export-all small{color:rgba(255,255,255,.8);}
 
   .note{font-size:.74rem;color:#8a6d1f;background:#fff8e8;border:1px solid #f0dfa8;border-radius:8px;padding:9px 11px;margin-bottom:14px;line-height:1.5;}
-  .proto-flag{position:fixed;bottom:0;left:0;right:0;background:var(--navy-deep);color:#fff;text-align:center;font-size:.72rem;padding:8px;z-index:10;}
+  .syncbar{background:#eef3fb;border-bottom:1px solid var(--line);padding:6px 14px;text-align:center;}
+  #sync-status{font-size:.7rem;color:#5a6a86;}
+  #sync-status.ok{color:#14653a;} #sync-status.bad{color:#b9432f;} #sync-status.busy{color:#8a6d1f;}
 
   .report-title{font-weight:700;font-size:1rem;margin:0 0 4px;text-align:center;}
 
@@ -199,9 +200,12 @@
 
 <header>
   <a class="back" href="index.html">‹ กลับเมนูหลัก</a>
-  <h1>🫁 บันทึกเหตุการณ์รายวัน</h1>
-  <span class="badge">ตัวอย่าง / ยังไม่เชื่อม RCU1</span>
+  <h1>บันทึกเหตุการณ์รายวัน</h1>
 </header>
+
+<div class="syncbar">
+  <span id="sync-status">กำลังเชื่อมส่วนกลาง...</span>
+</div>
 
 <div class="toprow">
   <div>
@@ -290,7 +294,6 @@
 
 <div id="pdf-report-container" style="display:none;"></div>
 
-<div class="proto-flag">💾 บันทึกอัตโนมัติในเครื่องนี้ — ข้อมูลอยู่ครบแม้ปิดหน้า (ล้างข้อมูลเบราว์เซอร์แล้วจะหาย)</div>
 
 <script>
 /* ---------------- data model ---------------- */
@@ -1034,6 +1037,83 @@ loadStore();
 document.addEventListener("input", saveStore);
 document.addEventListener("change", saveStore);
 window.addEventListener("beforeunload", saveStore);
+
+/* ================= เชื่อมข้อมูลส่วนกลาง (Google Sheets) ================= */
+const CLOUD_URL = "https://script.google.com/macros/s/AKfycbxRfc7crS3I3rC6UP-9FDOka5QdszFEJaF4dGsBTbyL-mZQC1GdFCGc-hupoPKXUaVt/exec";
+const CLOUD_KIND = "shift";
+
+function setSync(msg, cls){
+  const el = document.getElementById("sync-status");
+  el.textContent = msg;
+  el.className = cls || "";
+}
+
+// pull every day from the sheet and merge in; server wins for days it knows about
+async function cloudLoad(silent){
+  setSync("กำลังโหลดจากส่วนกลาง...", "busy");
+  try{
+    const res = await fetch(`${CLOUD_URL}?kind=${CLOUD_KIND}&all=1`);
+    const j = await res.json();
+    if(!j.ok) throw new Error(j.error || "โหลดไม่สำเร็จ");
+    const days = j.data || {};
+    let n = 0;
+    Object.keys(days).forEach(k=>{ allDays[k] = days[k]; n++; });
+    localStorage.setItem(STORE_KEY, JSON.stringify(allDays));
+    // re-open the current date so the screen shows what just arrived
+    switchToDate(currentDateKey);
+    renderAllForCurrentDay();
+    setSync(`โหลดแล้ว ${n} วัน — ${new Date().toLocaleTimeString("th-TH")}`, "ok");
+  }catch(err){
+    setSync("โหลดไม่สำเร็จ: " + (err.message || err), "bad");
+    if(!silent) showPopup("โหลดข้อมูลจากส่วนกลางไม่สำเร็จ\n" + (err.message || err));
+  }
+}
+
+// push the day currently open
+async function cloudSave(silent){
+  setSync("กำลังบันทึกขึ้นส่วนกลาง...", "busy");
+  try{
+    saveStore();
+    const res = await fetch(CLOUD_URL, {
+      method: "POST",
+      // text/plain avoids the CORS preflight that Apps Script cannot answer
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ kind: CLOUD_KIND, date: currentDateKey, data: allDays[currentDateKey] || {} })
+    });
+    const j = await res.json();
+    if(!j.ok) throw new Error(j.error || "บันทึกไม่สำเร็จ");
+    setSync(`บันทึกวันที่ ${j.saved} แล้ว — ${j.at}`, "ok");
+  }catch(err){
+    setSync("บันทึกไม่สำเร็จ: " + (err.message || err), "bad");
+    if(!silent) showPopup("บันทึกขึ้นส่วนกลางไม่สำเร็จ\n" + (err.message || err));
+  }
+}
+
+// save automatically a moment after typing stops, so every change reaches the sheet
+let cloudTimer = null;
+let cloudDirty = false;
+function scheduleCloudSave(){
+  if(!currentDateKey) return;
+  cloudDirty = true;
+  clearTimeout(cloudTimer);
+  cloudTimer = setTimeout(()=>{ cloudDirty = false; cloudSave(true); }, 1500);
+}
+document.addEventListener("input", scheduleCloudSave);
+document.addEventListener("change", scheduleCloudSave);
+
+// flush anything still pending if the tab is closed or backgrounded
+window.addEventListener("beforeunload", ()=>{
+  if(!cloudDirty || !currentDateKey) return;
+  saveStore();
+  const body = JSON.stringify({ kind: CLOUD_KIND, date: currentDateKey, data: allDays[currentDateKey] || {} });
+  navigator.sendBeacon && navigator.sendBeacon(CLOUD_URL, new Blob([body], {type:"text/plain;charset=utf-8"}));
+});
+document.addEventListener("visibilitychange", ()=>{
+  if(document.visibilityState === "hidden" && cloudDirty){ clearTimeout(cloudTimer); cloudDirty=false; cloudSave(true); }
+});
+
+// pull the shared data as soon as the page opens
+cloudLoad(true);
 
 /* ================= EXPORT FUNCTIONS ================= */
 
