@@ -52,6 +52,9 @@
   .duty-field textarea{width:100%;min-height:32px;padding:5px 7px;border:1px solid var(--line);border-radius:6px;font-size:.76rem;font-family:inherit;resize:vertical;background:#fff;}
 
   nav.tabs{display:flex;background:#fff;border-bottom:2px solid var(--line);position:sticky;top:0;z-index:6;}
+  .syncbar{background:#eef3fb;border-bottom:1px solid var(--line);padding:6px 14px;text-align:center;}
+  #sync-status{font-size:.7rem;color:#5a6a86;}
+  #sync-status.ok{color:#14653a;} #sync-status.bad{color:#b9432f;} #sync-status.busy{color:#8a6d1f;}
   nav.tabs button{flex:1;padding:10px 2px;background:none;border:none;font-size:.72rem;font-weight:600;color:#7a8399;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;}
   nav.tabs button.active{color:var(--navy);border-bottom-color:var(--navy);}
 
@@ -217,6 +220,10 @@
     <div class="persist-note">ข้อมูลที่กรอกไว้แล้ว (ชื่อ/เตียง/ผู้ป่วย ฯลฯ) จะไม่หายเมื่อกดปุ่มนี้ — จะหายเฉพาะตอนปิดแท็บ/รีเฟรชหน้าเว็บเท่านั้น</div>
   </div>
 </details>
+
+<div class="syncbar">
+  <span id="sync-status">กำลังเชื่อมส่วนกลาง...</span>
+</div>
 
 <nav class="tabs">
   <button data-tab="assign" class="active">🧭 Assign</button>
@@ -1028,6 +1035,92 @@ document.getElementById("btn-print-work").addEventListener("click", async (e)=>{
 initMonthSelect();
 renderDutySettings();
 generateAll();
+
+/* ================= เชื่อมข้อมูลส่วนกลาง (Google Sheets) ================= */
+const CLOUD_URL = "https://script.google.com/macros/s/AKfycbwP37tBwgUWBsQaX9C1MypWx1sA11Uuiw4cy_NvgL7Ajy8ZmZLMuYOXIpcztPEdtoiN1w/exec";
+const CLOUD_KIND = "assign";
+
+// one record per month, e.g. 2569-08
+function monthKey(){
+  const m = String(parseInt(document.getElementById("month-select").value) + 1).padStart(2,"0");
+  return `${document.getElementById("year-input").value}-${m}`;
+}
+function setSync(msg, cls){
+  const el = document.getElementById("sync-status");
+  el.textContent = msg; el.className = cls || "";
+}
+
+async function cloudLoad(){
+  setSync("กำลังโหลดจากส่วนกลาง...", "busy");
+  try{
+    const res = await fetch(`${CLOUD_URL}?kind=${CLOUD_KIND}&date=${monthKey()}`);
+    const j = await res.json();
+    if(!j.ok) throw new Error(j.error || "โหลดไม่สำเร็จ");
+    const d = j.data || {};
+    if(d.assign){
+      assign = d.assign;
+      changeLog = d.changeLog || [];
+      if(d.numDays) document.getElementById("num-days").value = d.numDays;
+      if(d.rosterRN) document.getElementById("roster-rn").value = d.rosterRN;
+      if(d.rosterNA) document.getElementById("roster-na").value = d.rosterNA;
+      if(d.rosterWK) document.getElementById("roster-wk").value = d.rosterWK;
+      // rebuild the screen from what just arrived, without wiping it
+      ROSTER_RN = parseRoster(document.getElementById("roster-rn").value);
+      ROSTER_NA = parseRoster(document.getElementById("roster-na").value);
+      ROSTER_WK = parseRoster(document.getElementById("roster-wk").value);
+      NUM_DAYS = parseInt(document.getElementById("num-days").value) || 31;
+      document.getElementById("work-day-input").max = NUM_DAYS;
+      ensureAssignDays();
+      renderJumpSelect(); renderAssignDays(); renderWorkDay(); renderSummary(); renderHistory();
+      setSync(`โหลดเดือน ${getMonthLabel()} แล้ว — ${new Date().toLocaleTimeString("th-TH")}`, "ok");
+    } else {
+      setSync(`ยังไม่มีข้อมูลของ ${getMonthLabel()} ในส่วนกลาง`, "ok");
+    }
+  }catch(err){
+    setSync("โหลดไม่สำเร็จ: " + (err.message || err), "bad");
+  }
+}
+
+async function cloudSave(){
+  setSync("กำลังบันทึกขึ้นส่วนกลาง...", "busy");
+  try{
+    const payload = {
+      assign, changeLog,
+      numDays: document.getElementById("num-days").value,
+      rosterRN: document.getElementById("roster-rn").value,
+      rosterNA: document.getElementById("roster-na").value,
+      rosterWK: document.getElementById("roster-wk").value
+    };
+    const res = await fetch(CLOUD_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ kind: CLOUD_KIND, date: monthKey(), data: payload })
+    });
+    const j = await res.json();
+    if(!j.ok) throw new Error(j.error || "บันทึกไม่สำเร็จ");
+    setSync(`บันทึก ${getMonthLabel()} แล้ว — ${j.at}`, "ok");
+  }catch(err){
+    setSync("บันทึกไม่สำเร็จ: " + (err.message || err), "bad");
+  }
+}
+
+let cloudTimer = null, cloudDirty = false;
+function scheduleCloudSave(){
+  cloudDirty = true;
+  clearTimeout(cloudTimer);
+  cloudTimer = setTimeout(()=>{ cloudDirty = false; cloudSave(); }, 1500);
+}
+document.addEventListener("input", scheduleCloudSave);
+document.addEventListener("change", scheduleCloudSave);
+document.addEventListener("visibilitychange", ()=>{
+  if(document.visibilityState === "hidden" && cloudDirty){ clearTimeout(cloudTimer); cloudDirty=false; cloudSave(); }
+});
+// switching month pulls that month's record instead of saving the old one over it
+["month-select","year-input"].forEach(id=>{
+  document.getElementById(id).addEventListener("change", ()=>{ clearTimeout(cloudTimer); cloudDirty=false; cloudLoad(); });
+});
+
+cloudLoad();
 </script>
 </body>
 </html>
