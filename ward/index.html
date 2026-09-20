@@ -70,10 +70,32 @@
   .item3{border-left-color:var(--c3b);} .item3 .num{background:linear-gradient(145deg,var(--c3a),var(--c3b));}
 
 
+  .gate{position:fixed;inset:0;z-index:999;display:flex;align-items:center;justify-content:center;
+        padding:22px;background:linear-gradient(160deg,#2b5fd9 0%,#153a94 45%,#081d4f 100%);}
+  .gate-box{background:#fff;border-radius:18px;padding:26px 20px;width:100%;max-width:330px;text-align:center;
+            box-shadow:0 10px 34px rgba(0,0,0,.3);}
+  .gate-title{font-size:1.8rem;font-weight:700;color:#153a94;letter-spacing:.02em;}
+  .gate-sub{font-size:.78rem;color:#6b7690;margin:4px 0 16px;font-weight:400;}
+  .gate-box input{width:100%;padding:12px;border:1.5px solid #ccd6e8;border-radius:10px;
+                  font-size:1rem;text-align:center;font-family:inherit;margin-bottom:10px;}
+  .gate-box button{width:100%;padding:12px;border:none;border-radius:10px;background:#153a94;color:#fff;
+                   font-size:.95rem;font-weight:700;font-family:inherit;cursor:pointer;}
+  .gate-box button:disabled{opacity:.6;}
+  .gate-msg{font-size:.76rem;color:#b9432f;margin-top:10px;min-height:1em;}
   footer{text-align:center;font-size:.68rem;color:#9aa4b8;padding:4px 16px 30px;font-weight:400;}
 </style>
 </head>
 <body>
+
+<div class="gate" id="gate">
+  <div class="gate-box">
+    <div class="gate-title">RCU1</div>
+    <p class="gate-sub">กรุณาใส่รหัสผ่านเพื่อเข้าใช้งาน</p>
+    <input type="password" id="gate-pw" inputmode="text" autocomplete="current-password" placeholder="รหัสผ่าน">
+    <button type="button" id="gate-go">เข้าใช้งาน</button>
+    <div class="gate-msg" id="gate-msg"></div>
+  </div>
+</div>
 
 <header>
   <h1><span class="l1">Respiratory Care Unit</span><span class="l2">RCU1</span></h1>
@@ -110,5 +132,52 @@
 
 <footer>RCU Maharat Nakhon Ratchasima Hospital</footer>
 
+<script>
+const CLOUD_URL = "https://script.google.com/macros/s/AKfycbxw60qoCGFEs6vtibn0nGq2uvTOp6yxbH9HIc2BEdNGeBQi-a7-iN_lfdjFWFnoHY9f/exec";
+const AUTH_KEY = "rcu_auth_pw";
+
+function unlock(){ document.getElementById("gate").style.display = "none"; }
+
+// signed in before? verify it still matches the server before letting them through
+(async function(){
+  const saved = localStorage.getItem(AUTH_KEY);
+  if(!saved) return;
+  unlock();                       // don't make them wait on a slow network
+  try{
+    const res = await fetch(`${CLOUD_URL}?action=login&pw=${encodeURIComponent(saved)}`);
+    const j = await res.json();
+    if(!j.ok){                    // password was changed on the server
+      localStorage.removeItem(AUTH_KEY);
+      document.getElementById("gate").style.display = "flex";
+      document.getElementById("gate-msg").textContent = "รหัสผ่านถูกเปลี่ยน กรุณาใส่รหัสใหม่";
+    }
+  }catch(err){ /* offline: keep them in, requests will simply fail later */ }
+})();
+
+async function tryLogin(){
+  const pw = document.getElementById("gate-pw").value.trim();
+  const msg = document.getElementById("gate-msg");
+  const btn = document.getElementById("gate-go");
+  if(!pw){ msg.textContent = "กรุณาใส่รหัสผ่าน"; return; }
+  btn.disabled = true; msg.textContent = "กำลังตรวจสอบ...";
+  try{
+    const res = await fetch(`${CLOUD_URL}?action=login&pw=${encodeURIComponent(pw)}`);
+    const j = await res.json();
+    if(j.ok){
+      localStorage.setItem(AUTH_KEY, pw);   // remembered so it is asked once per device
+      msg.textContent = "";
+      unlock();
+    } else {
+      msg.textContent = "รหัสผ่านไม่ถูกต้อง";
+    }
+  }catch(err){
+    msg.textContent = "เชื่อมต่อไม่สำเร็จ — ตรวจสอบอินเทอร์เน็ต";
+  }finally{
+    btn.disabled = false;
+  }
+}
+document.getElementById("gate-go").addEventListener("click", tryLogin);
+document.getElementById("gate-pw").addEventListener("keydown", e=>{ if(e.key === "Enter") tryLogin(); });
+</script>
 </body>
 </html>

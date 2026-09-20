@@ -1039,8 +1039,15 @@ document.addEventListener("change", saveStore);
 window.addEventListener("beforeunload", saveStore);
 
 /* ================= เชื่อมข้อมูลส่วนกลาง (Google Sheets) ================= */
-const CLOUD_URL = "https://script.google.com/macros/s/AKfycbwP37tBwgUWBsQaX9C1MypWx1sA11Uuiw4cy_NvgL7Ajy8ZmZLMuYOXIpcztPEdtoiN1w/exec";
+const CLOUD_URL = "https://script.google.com/macros/s/AKfycbxw60qoCGFEs6vtibn0nGq2uvTOp6yxbH9HIc2BEdNGeBQi-a7-iN_lfdjFWFnoHY9f/exec";
 const CLOUD_KIND = "shift";
+
+/* ---- ต้องผ่านหน้าใส่รหัสก่อน ---- */
+const AUTH_KEY = "rcu_auth_pw";
+const AUTH_PW = localStorage.getItem(AUTH_KEY);
+if(!AUTH_PW){ location.replace("index.html"); }
+function authed(){ return !!AUTH_PW; }
+
 
 function setSync(msg, cls){
   const el = document.getElementById("sync-status");
@@ -1050,9 +1057,10 @@ function setSync(msg, cls){
 
 // pull every day from the sheet and merge in; server wins for days it knows about
 async function cloudLoad(silent){
+  if(!authed()) return;
   setSync("กำลังโหลดจากส่วนกลาง...", "busy");
   try{
-    const res = await fetch(`${CLOUD_URL}?kind=${CLOUD_KIND}&all=1`);
+    const res = await fetch(`${CLOUD_URL}?kind=${CLOUD_KIND}&all=1&pw=${encodeURIComponent(AUTH_PW)}`);
     const j = await res.json();
     if(!j.ok) throw new Error(j.error || "โหลดไม่สำเร็จ");
     const days = j.data || {};
@@ -1071,6 +1079,7 @@ async function cloudLoad(silent){
 
 // push the day currently open
 async function cloudSave(silent){
+  if(!authed()) return;
   setSync("กำลังบันทึกขึ้นส่วนกลาง...", "busy");
   try{
     saveStore();
@@ -1078,7 +1087,7 @@ async function cloudSave(silent){
       method: "POST",
       // text/plain avoids the CORS preflight that Apps Script cannot answer
       headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ kind: CLOUD_KIND, date: currentDateKey, data: allDays[currentDateKey] || {} })
+      body: JSON.stringify({ pw: AUTH_PW, kind: CLOUD_KIND, date: currentDateKey, data: allDays[currentDateKey] || {} })
     });
     const j = await res.json();
     if(!j.ok) throw new Error(j.error || "บันทึกไม่สำเร็จ");
@@ -1105,7 +1114,7 @@ document.addEventListener("change", scheduleCloudSave);
 window.addEventListener("beforeunload", ()=>{
   if(!cloudDirty || !currentDateKey) return;
   saveStore();
-  const body = JSON.stringify({ kind: CLOUD_KIND, date: currentDateKey, data: allDays[currentDateKey] || {} });
+  const body = JSON.stringify({ pw: AUTH_PW, kind: CLOUD_KIND, date: currentDateKey, data: allDays[currentDateKey] || {} });
   navigator.sendBeacon && navigator.sendBeacon(CLOUD_URL, new Blob([body], {type:"text/plain;charset=utf-8"}));
 });
 document.addEventListener("visibilitychange", ()=>{

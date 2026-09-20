@@ -1036,8 +1036,15 @@ renderDutySettings();
 generateAll();
 
 /* ================= เชื่อมข้อมูลส่วนกลาง (Google Sheets) ================= */
-const CLOUD_URL = "https://script.google.com/macros/s/AKfycbwP37tBwgUWBsQaX9C1MypWx1sA11Uuiw4cy_NvgL7Ajy8ZmZLMuYOXIpcztPEdtoiN1w/exec";
+const CLOUD_URL = "https://script.google.com/macros/s/AKfycbxw60qoCGFEs6vtibn0nGq2uvTOp6yxbH9HIc2BEdNGeBQi-a7-iN_lfdjFWFnoHY9f/exec";
 const CLOUD_KIND = "assign";
+
+/* ---- ต้องผ่านหน้าใส่รหัสก่อน ---- */
+const AUTH_KEY = "rcu_auth_pw";
+const AUTH_PW = localStorage.getItem(AUTH_KEY);
+if(!AUTH_PW){ location.replace("index.html"); }
+function authed(){ return !!AUTH_PW; }
+
 
 // one record per month, e.g. 2569-08
 function monthKey(){
@@ -1050,9 +1057,10 @@ function setSync(msg, cls){
 }
 
 async function cloudLoad(){
+  if(!authed()) return;
   setSync("กำลังโหลดจากส่วนกลาง...", "busy");
   try{
-    const res = await fetch(`${CLOUD_URL}?kind=${CLOUD_KIND}&date=${monthKey()}`);
+    const res = await fetch(`${CLOUD_URL}?kind=${CLOUD_KIND}&date=${monthKey()}&pw=${encodeURIComponent(AUTH_PW)}`);
     const j = await res.json();
     if(!j.ok) throw new Error(j.error || "โหลดไม่สำเร็จ");
     const d = j.data || {};
@@ -1081,6 +1089,7 @@ async function cloudLoad(){
 }
 
 async function cloudSave(){
+  if(!authed()) return;
   setSync("กำลังบันทึกขึ้นส่วนกลาง...", "busy");
   try{
     const payload = {
@@ -1093,7 +1102,7 @@ async function cloudSave(){
     const res = await fetch(CLOUD_URL, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ kind: CLOUD_KIND, date: monthKey(), data: payload })
+      body: JSON.stringify({ pw: AUTH_PW, kind: CLOUD_KIND, date: monthKey(), data: payload })
     });
     const j = await res.json();
     if(!j.ok) throw new Error(j.error || "บันทึกไม่สำเร็จ");
@@ -1103,8 +1112,9 @@ async function cloudSave(){
   }
 }
 
-let cloudTimer = null, cloudDirty = false;
+let cloudTimer = null, cloudDirty = false, suppressSave = false;
 function scheduleCloudSave(){
+  if(suppressSave) return;   // ignore the change event raised by switching month
   cloudDirty = true;
   clearTimeout(cloudTimer);
   cloudTimer = setTimeout(()=>{ cloudDirty = false; cloudSave(); }, 1500);
@@ -1116,7 +1126,13 @@ document.addEventListener("visibilitychange", ()=>{
 });
 // switching month pulls that month's record instead of saving the old one over it
 ["month-select","year-input"].forEach(id=>{
-  document.getElementById(id).addEventListener("change", ()=>{ clearTimeout(cloudTimer); cloudDirty=false; cloudLoad(); });
+  document.getElementById(id).addEventListener("change", async ()=>{
+    clearTimeout(cloudTimer);
+    cloudDirty = false;
+    suppressSave = true;          // hold off auto-save until the new month is in
+    try{ await cloudLoad(); }
+    finally{ setTimeout(()=>{ suppressSave = false; }, 300); }
+  });
 });
 
 cloudLoad();
