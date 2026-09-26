@@ -168,6 +168,21 @@
   .event-field textarea{min-height:44px;resize:vertical;}
   .event-row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
   .event-field input[readonly]{background:#f0f0f0;color:#555;}
+  .inc-wrap{margin-top:8px;}
+  .inc-card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px;}
+  .inc-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+  .inc-head span{font-size:.74rem;font-weight:700;color:var(--navy-deep);}
+  .inc-del{background:#fff;border:1.5px solid var(--danger);color:var(--danger);border-radius:6px;
+           padding:3px 9px;font-size:.66rem;font-weight:700;cursor:pointer;}
+  .inc-card label{display:block;font-size:.66rem;color:#666;margin:6px 0 2px;}
+  .inc-card select,.inc-card input,.inc-card textarea{width:100%;padding:7px;border:1px solid var(--line);
+           border-radius:6px;font-size:.78rem;font-family:inherit;background:#fff;}
+  .inc-card select:disabled,.inc-card input:disabled,.inc-card textarea:disabled{background:#f2f2f2;color:#777;opacity:1;}
+  .inc-warn{background:#fdecea;border:1px solid #efa9a9;color:#8c2020;border-radius:6px;
+            padding:6px 8px;font-size:.68rem;font-weight:700;margin-top:6px;}
+  .inc-add{width:100%;background:#fff;border:1.5px dashed var(--navy);color:var(--navy);border-radius:8px;
+           padding:9px;font-size:.76rem;font-weight:700;cursor:pointer;}
+  .inc-empty{font-size:.72rem;color:#888;}
   .germ-pairs{margin-top:8px;display:flex;flex-direction:column;gap:6px;}
 
   .event-scroll-row{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;}
@@ -762,6 +777,74 @@ function attachDailyScrollSync(){
 }
 
 const STAFF_STATUS_OPTIONS = ["เจ้าหน้าที่ขึ้นปฏิบัติงานครบ","เจ้าหน้าที่ลาป่วย(ราย)","เจ้าหน้าที่ลากิจ(ราย)","เจ้าหน้าที่ปฏิบัติไปราชการ(ราย)"];
+const RM_GROUPS = [
+  {g:"การให้เลือดปลอดภัย",s:"AI",i:["1.1  เตรียมผิดคน", "1.2  เจาะเลือดผิดคน", "1.3 ให้เลือดผิดคน", "1.4  ผิดชนิด", "1.5  ผิดขนาด", "1.6 อื่นๆ"]},
+  {g:"การผ่าตัดปลอดภัย",s:"AI",i:["2.1 มีสิ่งตกค้างภายในร่างกายผู้ป่วย", "2.2 set ผ่าตัด ผิดคน ผิดข้าง", "2.3 งดเลื่อนผ่าตัดจากพยาบาล", "2.4 เตรียมผ่าตัดไม่พร้อม", ".-  ไม่ได้ เซ็นใบยินยอม", ".-  ไม่ได้ NPO", ".-  ไม่ได้ถอดฟันปลอม /ของมีค่า/ลบเล็บ", "2.5 ส่งอุปกรณ์ไปORไม่ถูกต้อง"]},
+  {g:"ระบุตัวผู้ป่วย",s:"AI",i:["3.1 ติดสติ๊กเกอร์ผิด", "3.2 ส่งตรวจผิดคน/ส่งผ่าตัด", "3.3 ส่ง Lab ผิดคน", "3.4 ติด Lab ผิดคน", "3.5ไม่ติดป้ายข้อมือ", "3.6 เอ็กซเรย์ผิดคน", "3.7 ป้ายข้อมือผิดคน", "3.8 เรียกตรวจผิดคน/สมุดชมพู", "3.9 ทำหัตถการผิดคน/set ORผิดข้าง", "3.10 เจาะlab ผิดคน", "3.11 ระบุเพศผิด"]},
+  {g:"มารดา/ทารกเสียชีวิต",s:"AI",i:["4.1มารดาเสียชีวิตขณะดูแล", "4.2ทารก Arrest ขณะอยู่กับมารดา"]},
+  {g:"ผู้ป่วยฆ่าตัวตายในโรงพยาบาล",s:"AI",i:[]},
+  {g:"ET Tubeเลื่อน/หลุด/ดึงTube",s:"AI",i:["6.1 ET- tubeเลื่อน/หลุด", "6.2 ดึงTube"]},
+  {g:"พลัดตกหกล้ม/เป็นลม/ลื่น",s:"AI",i:["7.1 พลัดตกหกล้ม/ลื่นหกล้ม", "7.2 เป็นลม", "7.3 ตกเตียง", "7.4 ตกเก้าอี้", "7.5 ตกเปล"]},
+  {g:"Admin Error",s:"AI",i:["8.1 HAD (ระบุชื่อยา)", "8.2 ระดับ D", "8.3 ระดับ E ขึ้นไป (ต้องมีรายละเอียด)"]},
+  {g:"ผู้ป่วยมีภาวะArrest โดยไม่คาดคิด",s:"AI",i:["9.1 ขณะรอตรวจ", "9.2 ขณะส่งตรวจ/ทำหัตถการ", "9.3 ขณะดูแล"]},
+  {g:"ย้าย ICU โดยไม่ได้วางแผน",s:"AI",i:[]},
+  {g:"ทารก Arrest ขณะอยู่กับมารดา",s:"AI",i:[]},
+  {g:"admitted ผิด ward",s:"AI",i:[]},
+  {g:"เกิดแผลกดทับ(วันนอน)",s:"AI",i:["13.1 ICU", "13.2 Ward"]},
+  {g:"ดึง/เลื่อนหลุด (NG,Cath,Drain,Device)",s:"AI",i:["16.1 C line", "16.2 Foley cath", "16.3 Drain", "16.4 Cutdown"]},
+  {g:"Pheblitis/Extravasation",s:"AI",i:[]},
+  {g:"บาดเจ็บจากการถูกรัดตรึง",s:"AI",i:[]},
+  {g:"แพ้ยาซ้ำ",s:"AI",i:[]},
+  {g:"ผู้ป่วยหนีกลับ",s:"AI",i:[]},
+  {g:"การสื่อสาร",s:"AI",i:[]},
+  {g:"เจ้าหน้าที่บาดเจ็บ",s:"AI",i:["20.1 ถูกเข็มทิ่มตำ", "20.2 ถูกของมีคมตำ/บาด", "20.3 สารคัดหลั่งกระเด็นเข้าตา/ปาก"]},
+  {g:"เจ้าหน้าที่ถูกทำร้าย",s:"AI",i:[]},
+  {g:"Training Risk",s:"AI",i:["22.1 นศ.แพทย์", "22.2 นศ.พยาบาล", "22.3 RN ใหม่"]},
+  {g:"ข้อร้องเรียน",s:"AI",i:["23.1พฤติกรรมบริการ", "23.2ละเมิดสิทธิ์ผู้รับบริการ"]},
+  {g:"น้ำยา/อุปกรณ์หมดอายุ",s:"15",i:[]},
+  {g:"เครืองมือ/อุปกรณ์ติดไปกับผ้า",s:"15",i:[]},
+  {g:"เครื่องมือไม่พร้อมใช้ /วัสดุขาดคราว",s:"15",i:[]},
+  {g:"ผ้าไม่พอใช้",s:"15",i:[]},
+  {g:"ท่อน้ำประปารั่ว/ชำรุด",s:"15",i:[]},
+  {g:"Med Error",s:"AI",i:["Precribing error (สั่งยาผิด)", "Dispensing (จ่ายยาผิด)", "key ยาผิด / ไม่คียา"]},
+  {g:"Right Patient",s:"AI",i:["-ให้ยาผิดคน"]},
+  {g:"Right Drug",s:"AI",i:["-ให้ยาผิดชนิด", "-ให้ยาที่แพทย์ไม่มีคำสั่งการรักษา", "-ให้ยาที่ผู้ป่วยเคยมีประวัติแพ้ยา", "-ให้ยาที่หมดอายุ", "-ให้ยาเสื่อมคุณภาพ"]},
+  {g:"Right Dose",s:"AI",i:["-ให้ยาผิดขนาด", "-คำนวนขนาดยาผิด", "-ไม่สามารถใช้ยาที่มีเทคนิคบริหารพิเศษ เช่นยาพ่น", "-ให้ยาผิดความแรง", "-ให้ยาผิดความเข้มข้น", "-การเจือจางผิดสัดส่วน", "-ให้ยาซ้ำ", "-ให้ให้ยาที่แพทย์สั่งหยุด", "-การต่อยาโดยที่แพทย์ไม่ได้สั่ง", "-ไม่ได้ให้ยา / ลืมให้ยา / ข้ามไปให้เวลาใหม่"]},
+  {g:"Right Time",s:"AI",i:["-ให้ยาผิดไปจากเวลาที่กำหนด", "-ลืมให้ยา ให้เมื่อนึกได้", "-หยดให้ยาเร็วกว่าแพทย์กำหนด", "-หยดให้ยายาวนานกว่าแพทย์กำหนด", "-ให้ยาคลาดเคลื่อนระหว่างก่อน/หลังอาหาร"]},
+  {g:"Right Route",s:"AI",i:["-ผิดช่องทางเช่น IV IM Sc Oral", "-ให้ยาผิดอวัยวะ / ผิดข้าง"]},
+  {g:"Right Technique",s:"AI",i:["-ผสมเข้าด้วยกันไม่เหมาะสม", "-บริหารยาร่วม Y site ที่ไม่เหมาะสม", "-เดินยาเร็ว/ช้า กว่าที่ควรจะเป็น", "-เจือจางด้วยสารละลายที่ไม่เหมาะสม", "-ให้ยาผิดลำดับ(เคมีบำบัด)", "-บริหารยาด้วยเทคนิคไม่เหมาะสมส่งผลให้เกิดเหตุการณ์ไม่พึงประสงค์", "-บดยาที่ไม่ควรบด"]},
+  {g:"Right Record (ลงได้เฉพาะกรณี A Bที่ไม่มีผลต่อผู้ป่วย)",s:"AI",i:["-ไม่ลงชื่อในการบริหารยา", "-ไม่ได้ OFF ยา ในใบ MAR", "-ไม่คัดลอกรายการยาในใบ MAR", "-คัดลอกใบ MAR ผิดคน", "-คัดลอกใบ MAR ผิดชนิด", "-คัดลอกใบ MAR ผิดขนาด/ความแรง", "-คัดลอกใบ MAR ผิดเวลา", "-คัดลอกใบ MAR ผิดวิธี", "-คัดลอกใบ MAR ผิดเทคนิคการบริหารยา"]},
+  {g:"การเบิกยา (ลงได้เฉพาะกรณี A Bที่ไม่มีผลต่อผู้ป่วย)",s:"AI",i:["-เบิกยาผิดคน"]},
+];
+
+// A–I = คลินิก/ยา/Personnel Safety, 1–5 = Non-Clinic (ตามคู่มือ รพ.)
+const SEV_AI = [
+  ["A","A — มีโอกาสเกิด (ยังไม่ถึงผู้ป่วย)"],["B","B — เกิดแล้วแต่ไม่ถึงผู้ป่วย"],
+  ["C","C — ถึงผู้ป่วย ไม่อันตราย"],["D","D — ต้องเฝ้าระวัง"],
+  ["E","E — ต้องรักษาเพิ่ม"],["F","F — นอน รพ. นานขึ้น"],
+  ["G","G — พิการถาวร"],["H","H — ต้อง CPR"],["I","I — เสียชีวิต"]
+];
+const SEV_15 = [
+  ["1","1 — ไม่กระทบงาน (0–10,000 บ.)"],["2","2 — กระทบแต่คุมได้ (10,001–50,000 บ.)"],
+  ["3","3 — ต้องแก้ไข (50,001–250,000 บ.)"],["4","4 — ไม่บรรลุเป้าหมาย (250,001–10 ล.)"],
+  ["5","5 — เสียหายร้ายแรง (>10 ล.)"]
+];
+const SEV_HIGH = ["E","F","G","H","I","4","5"];   // ต้องทำ 12 กิจกรรมส่งฝ่ายการ
+
+function rmScaleFor(groupName){
+  const g = RM_GROUPS.find(x=>x.g === groupName);
+  return (g && g.s === "15") ? SEV_15 : SEV_AI;
+}
+// ทุกอุบัติการณ์ของเวรหนึ่ง เก็บเป็น array
+function getIncidents(sh){
+  const v = getDeep(data.shifts[sh], "events.incidents");
+  return Array.isArray(v) ? v : [];
+}
+function setIncidents(sh, arr){
+  setDeep(data.shifts[sh], "events.incidents", arr);
+  saveStore();
+}
+
 const GENERAL_OPTIONS = ["เหตุการณ์ทั่วไปปกติ","พบอุบัติการณ์ดังนี้"];
 const ETHICS_OPTIONS = ["ไม่พบความเสี่ยงด้านจริยธรรม","พบความเสี่ยงด้านจริยธรรม"];
 const GERM_OPTIONS = ["ไม่พบเชื้อดื้อยารายใหม่","พบเชื้อดื้อยา"];
@@ -772,6 +855,91 @@ function buildSelectOptions(list, current){
 }
 
 let shiftEditState = { "ดึก":"editing", "เช้า":"editing", "บ่าย":"editing" };
+
+
+/* ---------------- อุบัติการณ์ (RM) ---------------- */
+function renderIncidents(sh, locked){
+  const list = getIncidents(sh);
+  const dis = locked ? "disabled" : "";
+  let html = `<div class="inc-wrap">`;
+  list.forEach((it,idx)=>{
+    const scale = rmScaleFor(it.group);
+    const high = SEV_HIGH.includes(it.sev);
+    const grp = RM_GROUPS.find(x=>x.g === it.group);
+    html += `<div class="inc-card">
+      <div class="inc-head">
+        <span>อุบัติการณ์ที่ ${idx+1}</span>
+        ${locked?"":`<button type="button" class="inc-del" data-sh="${sh}" data-i="${idx}">ลบ</button>`}
+      </div>
+      <label>หมวด</label>
+      <select ${dis} class="inc-f" data-sh="${sh}" data-i="${idx}" data-k="group">
+        <option value="">-- เลือกหมวด --</option>
+        ${RM_GROUPS.map(x=>`<option ${x.g===it.group?"selected":""}>${x.g}</option>`).join("")}
+      </select>
+      ${(grp && grp.i.length) ? `
+        <label>รายการย่อย</label>
+        <select ${dis} class="inc-f" data-sh="${sh}" data-i="${idx}" data-k="item">
+          <option value="">-- เลือกรายการ --</option>
+          ${grp.i.map(x=>`<option ${x===it.item?"selected":""}>${x}</option>`).join("")}
+        </select>` : ""}
+      <label>ระดับความรุนแรง</label>
+      <select ${dis} class="inc-f" data-sh="${sh}" data-i="${idx}" data-k="sev">
+        <option value="">-- เลือกระดับ --</option>
+        ${scale.map(([v,t])=>`<option value="${v}" ${v===it.sev?"selected":""}>${t}</option>`).join("")}
+      </select>
+      ${high ? `<div class="inc-warn">⚠ ระดับนี้ต้องทำ 12 กิจกรรม ส่งฝ่ายการพยาบาล</div>` : ""}
+      <div class="event-row2">
+        <div><label>เตียง</label><input ${dis} type="text" class="inc-f" data-sh="${sh}" data-i="${idx}" data-k="bed" value="${it.bed||""}"></div>
+        <div><label>HN</label><input ${dis} type="text" class="inc-f" data-sh="${sh}" data-i="${idx}" data-k="hn" value="${it.hn||""}"></div>
+      </div>
+      <label>รายละเอียดเหตุการณ์</label>
+      <textarea ${dis} rows="2" class="inc-f" data-sh="${sh}" data-i="${idx}" data-k="detail">${it.detail||""}</textarea>
+      <label>การจัดการ/แก้ไข</label>
+      <textarea ${dis} rows="2" class="inc-f" data-sh="${sh}" data-i="${idx}" data-k="action">${it.action||""}</textarea>
+    </div>`;
+  });
+  if(!locked) html += `<button type="button" class="inc-add" data-sh="${sh}">+ เพิ่มอุบัติการณ์</button>`;
+  if(locked && !list.length) html += `<div class="inc-empty">ไม่มีรายละเอียด</div>`;
+  html += `</div>`;
+  return html;
+}
+
+document.getElementById("daily-table-wrap").addEventListener("click", (e)=>{
+  const add = e.target.closest(".inc-add");
+  const del = e.target.closest(".inc-del");
+  if(add){
+    const sh = add.dataset.sh;
+    const arr = getIncidents(sh).slice();
+    arr.push({group:"",item:"",sev:"",bed:"",hn:"",detail:"",action:""});
+    setIncidents(sh, arr);
+    renderEventsRow();
+  } else if(del){
+    const sh = del.dataset.sh, i = +del.dataset.i;
+    const arr = getIncidents(sh).slice();
+    arr.splice(i,1);
+    setIncidents(sh, arr);
+    renderEventsRow();
+  }
+});
+
+document.getElementById("daily-table-wrap").addEventListener("input", (e)=>{
+  const t = e.target.closest(".inc-f");
+  if(!t || t.tagName === "SELECT") return;
+  const arr = getIncidents(t.dataset.sh).slice();
+  arr[+t.dataset.i][t.dataset.k] = t.value;
+  setIncidents(t.dataset.sh, arr);
+});
+document.getElementById("daily-table-wrap").addEventListener("change", (e)=>{
+  const t = e.target.closest(".inc-f");
+  if(!t || t.tagName !== "SELECT") return;
+  const sh = t.dataset.sh, i = +t.dataset.i, k = t.dataset.k;
+  const arr = getIncidents(sh).slice();
+  arr[i][k] = t.value;
+  // เปลี่ยนหมวด -> ล้างรายการย่อยและระดับ เพราะชุดตัวเลือกเปลี่ยน
+  if(k === "group"){ arr[i].item = ""; arr[i].sev = ""; }
+  setIncidents(sh, arr);
+  renderEventsRow();
+});
 
 function renderEventsRow(){
   const scrollRow = document.getElementById("event-scroll-row");
@@ -813,7 +981,7 @@ function buildEventCardHtml(sh){
 
       <div class="event-field"><label>เหตุการณ์ทั่วไป</label>
         <select ${dis} data-shift="${sh}" data-f="events.general" class="conditional-select">${buildSelectOptions(GENERAL_OPTIONS, generalStatus)}</select>
-        ${showGeneralDetail ? `<textarea ${dis} style="margin-top:6px" rows="3" data-shift="${sh}" data-f="events.generalDetail" placeholder="รายละเอียดเหตุการณ์">${g('events.generalDetail')}</textarea>` : ""}
+        ${showGeneralDetail ? renderIncidents(sh, submitted) : ""}
       </div>
 
       <div class="event-field"><label>ความเสี่ยงด้านจริยธรรม</label>
@@ -863,7 +1031,13 @@ function validateEventCard(sh){
   if(staffStatus !== STAFF_STATUS_OPTIONS[0] && !g('events.staffCount')) missing.push("จำนวนเจ้าหน้าที่ (ราย)");
 
   const generalStatus = g('events.general') || GENERAL_OPTIONS[0];
-  if(generalStatus === GENERAL_OPTIONS[1] && !g('events.generalDetail')) missing.push("รายละเอียดเหตุการณ์ทั่วไป");
+  if(generalStatus === GENERAL_OPTIONS[1]){
+    const inc = getIncidents(sh);
+    if(!inc.length) missing.push("ยังไม่ได้เพิ่มอุบัติการณ์");
+    else inc.forEach((it,n)=>{
+      if(!it.group || !it.sev) missing.push(`อุบัติการณ์ที่ ${n+1}: เลือกหมวดและระดับให้ครบ`);
+    });
+  }
 
   const ethicsStatus = g('events.ethics') || ETHICS_OPTIONS[0];
   if(ethicsStatus === ETHICS_OPTIONS[1] && !g('events.ethicsDetail')) missing.push("รายละเอียดความเสี่ยงจริยธรรม");
@@ -1138,7 +1312,17 @@ function staffStatusText(sh, D){
 }
 function generalText(sh, D){
   const s = getDeep(D.shifts[sh],'events.general') || GENERAL_OPTIONS[0];
-  return s === GENERAL_OPTIONS[1] ? (getDeep(D.shifts[sh],'events.generalDetail') || "-") : s;
+  if(s !== GENERAL_OPTIONS[1]) return s;
+  const arr = getDeep(D.shifts[sh],'events.incidents');
+  if(!Array.isArray(arr) || !arr.length) return "พบอุบัติการณ์ (ยังไม่ระบุรายละเอียด)";
+  return arr.map((it,n)=>{
+    const where = [it.bed?`เตียง ${it.bed}`:"", it.hn?`HN ${it.hn}`:""].filter(Boolean).join(" ");
+    return `${n+1}) ${[it.group,it.item].filter(Boolean).join(" / ")}`
+      + (it.sev?` [ระดับ ${it.sev}]`:"")
+      + (where?` ${where}`:"")
+      + (it.detail?` — ${it.detail}`:"")
+      + (it.action?` | แก้ไข: ${it.action}`:"");
+  }).join("\n");
 }
 function ethicsText(sh, D){
   const s = getDeep(D.shifts[sh],'events.ethics') || ETHICS_OPTIONS[0];
