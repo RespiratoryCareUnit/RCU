@@ -1978,7 +1978,42 @@ function rmCount(yearBE, m, back){
 // ชื่อในไฟล์ต้นฉบับมีช่องว่าง/จุดปน จึงเทียบแบบตัดช่องว่าง
 function rmNorm(s){ return String(s||"").replace(/\s+/g,"").replace(/^[.\-]+/,""); }
 
-function buildRmSheet(title, counts, auto){
+// เรียงความบรรยายอุบัติการณ์ 1 รายการ
+function rmNarrative(sh, it, incharge){
+  const parts = [];
+  parts.push(`เวร${sh}`);
+  const what = [it.group, it.item].filter(x=>x && String(x).trim()).join(" / ");
+  if(what) parts.push(what);
+  if(it.sev) parts.push(`ระดับ ${it.sev}`);
+  if(it.bed) parts.push(`เตียง ${it.bed}`);
+  if(it.hn)  parts.push(`HN ${it.hn}`);
+  let s = parts.join(" · ");
+  if(it.detail) s += ` — ${it.detail}`;
+  if(it.action) s += ` | การแก้ไข: ${it.action}`;
+  if(incharge)  s += ` | Incharge: ${incharge}`;
+  return s;
+}
+// ดึงอุบัติการณ์ของเดือนหนึ่ง -> [{date, text}]
+function rmMonthIncidents(yearBE, m, back){
+  const yCE = (back ? yearBE - 1 : yearBE) - 543;
+  const out = [];
+  Object.keys(allDays).sort().forEach(key=>{
+    const [yy,mm,dd] = key.split("-").map(Number);
+    if(yy !== yCE || mm !== m) return;
+    SHIFTS.forEach(sh=>{
+      const arr = getDeep(allDays[key].shifts[sh], "events.incidents");
+      if(!Array.isArray(arr)) return;
+      arr.forEach(it=>{
+        if(!it || (!it.group && !it.detail)) return;
+        out.push({ date:`${dd}/${mm}/${yy+543}`,
+                   text: rmNarrative(sh, it, getDeep(allDays[key].shifts[sh],"incharge")) });
+      });
+    });
+  });
+  return out;
+}
+
+function buildRmSheet(title, counts, auto, incidents){
   const aoa = [];
   RM_TPL.forEach((row,i)=>{
     if(i === 0){ aoa.push([ "", title ]); return; }      // หัวเรื่อง
@@ -2007,8 +2042,20 @@ function buildRmSheet(title, counts, auto){
     aoa.push(line);
   });
 
+  // ---- รายละเอียดอุบัติการณ์ต่อท้ายตาราง ----
+  aoa.push([]); aoa.push([]);
+  const detailTitleRow = aoa.length;
+  aoa.push(["รายละเอียดอุบัติการณ์เดือนนี้"]);
+  const detailHeadRow = aoa.length;
+  aoa.push(["วันที่","รายละเอียด"]);
+  const detailStart = aoa.length;
+  const inc = incidents || [];
+  if(inc.length) inc.forEach(x=> aoa.push([x.date, x.text]));
+  else aoa.push(["", "ไม่มีอุบัติการณ์"]);
+  const detailEnd = aoa.length - 1;
+
   const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws["!cols"] = [{wch:7},{wch:46},{wch:8}].concat(Array(9).fill({wch:5}), [{wch:8}]);
+  ws["!cols"] = [{wch:11},{wch:46},{wch:8}].concat(Array(9).fill({wch:5}), [{wch:8}]);
   ws["!freeze"] = {xSplit:2, ySplit:3};
   styleCell(ws,"B1",{font:{bold:true,sz:12,color:{rgb:"0D3B8C"}}});
   ["A2","B2","D2"].forEach(a=>styleCell(ws,a,{font:{bold:true},fill:{fgColor:{rgb:"E8F0FD"}},alignment:{horizontal:"center"}}));
@@ -2029,6 +2076,29 @@ function buildRmSheet(title, counts, auto){
         {font:{bold:true},fill:{fgColor:{rgb:"FFF4E0"}},alignment:{horizontal:"center"}});
     }
   });
+
+  // ผสานคอลัมน์ B ถึงคอลัมน์สุดท้าย แล้วปรับความสูงแถวตามความยาวข้อความ
+  const LAST = 12;
+  ws["!merges"] = ws["!merges"] || [];
+  ws["!merges"].push({s:{r:detailTitleRow,c:0}, e:{r:detailTitleRow,c:LAST}});
+  ws["!merges"].push({s:{r:detailHeadRow,c:1},  e:{r:detailHeadRow,c:LAST}});
+  styleCell(ws, XLSX.utils.encode_cell({r:detailTitleRow,c:0}),
+    {font:{bold:true,sz:12,color:{rgb:"082A66"}},fill:{fgColor:{rgb:"DDE6F7"}},alignment:{horizontal:"left"}});
+  ["A","B"].forEach((_,n)=>styleCell(ws, XLSX.utils.encode_cell({r:detailHeadRow,c:n}),
+    {font:{bold:true,color:{rgb:"0D3B8C"}},fill:{fgColor:{rgb:"E8F0FD"}},alignment:{horizontal:"center"}}));
+
+  const rowsMeta = ws["!rows"] || [];
+  for(let r=detailStart; r<=detailEnd; r++){
+    ws["!merges"].push({s:{r,c:1}, e:{r,c:LAST}});
+    styleCell(ws, XLSX.utils.encode_cell({r,c:0}), {alignment:{horizontal:"center",vertical:"top"}});
+    styleCell(ws, XLSX.utils.encode_cell({r,c:1}), {alignment:{horizontal:"left",vertical:"top",wrapText:true}});
+    const cell = ws[XLSX.utils.encode_cell({r,c:1})];
+    const len = cell && cell.v ? String(cell.v).length : 0;
+    const perLine = 95;                       // ประมาณอักษรต่อบรรทัดของช่องที่ผสานแล้ว
+    rowsMeta[r] = { hpt: Math.max(16, Math.ceil(len / perLine) * 15) };
+  }
+  ws["!rows"] = rowsMeta;
+
   return ws;
 }
 
@@ -2143,9 +2213,12 @@ function exportRM(){
 
     const yearTotal = {};
     const yearAuto = { blood:0, vent:0, bedDays:0 };
+    let yearInc = [];
     RM_MONTHS.forEach(mo=>{
       const counts = rmCount(yearBE, mo.m, mo.back);
       const auto = rmAuto(yearBE, mo.m, mo.back);
+      const monthInc = rmMonthIncidents(yearBE, mo.m, mo.back);
+      yearInc = yearInc.concat(monthInc);
       yearAuto.blood += auto.blood; yearAuto.vent += auto.vent; yearAuto.bedDays += auto.bedDays;
       // สะสมเข้ารวมปี
       Object.keys(counts).forEach(k=>{
@@ -2156,11 +2229,11 @@ function exportRM(){
       });
       const yShown = (mo.back ? yearBE - 1 : yearBE);
       const title = `รายงานอุบัติการณ์ เดือน ${mo.name}  ${yShown}  กลุ่มภารกิจด้านการพยาบาลปี  ${yearBE}`;
-      XLSX.utils.book_append_sheet(wb, buildRmSheet(title, counts, auto), mo.sheet);
+      XLSX.utils.book_append_sheet(wb, buildRmSheet(title, counts, auto, monthInc), mo.sheet);
     });
 
     XLSX.utils.book_append_sheet(wb,
-      buildRmSheet(`รายงานอุบัติการณ์ รวมทั้งปี  กลุ่มภารกิจด้านการพยาบาลปี  ${yearBE}`, yearTotal, yearAuto), "รวมปี");
+      buildRmSheet(`รายงานอุบัติการณ์ รวมทั้งปี  กลุ่มภารกิจด้านการพยาบาลปี  ${yearBE}`, yearTotal, yearAuto, yearInc), "รวมปี");
 
     XLSX.utils.book_append_sheet(wb, buildRmDetailSheet(yearBE), "รายละเอียด");
 
