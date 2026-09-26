@@ -300,12 +300,11 @@
   <div class="month-range-box">
     <div class="mr-title">⚠️ รายงานความเสี่ยง RM (ทั้งปีงบ)</div>
     <div class="mr-row">
-      <label>ปีงบ พ.ศ.</label><input type="number" id="rm-year" value="2569" style="width:100px">
+      <label>ปีงบ</label><select id="rm-year"></select>
     </div>
-    <div class="p4pd-hint">ปีงบ 2569 = ต.ค. 2568 – ก.ย. 2569 · แถวตัวหาร (วันนอนรวม, Vent Day ฯลฯ) เว้นว่างให้กรอกเอง</div>
     <button class="export-btn" id="btn-export-rm" style="border-color:var(--danger);color:var(--danger);margin-top:8px;">
       <span class="icon">⚠️</span>
-      <span>Export RM<small>14 ชีท: Dashboard + 12 เดือน + รวมปี</small></span>
+      <span>Export RM</span>
     </button>
   </div>
 </section>
@@ -1979,14 +1978,21 @@ function rmCount(yearBE, m, back){
 // ชื่อในไฟล์ต้นฉบับมีช่องว่าง/จุดปน จึงเทียบแบบตัดช่องว่าง
 function rmNorm(s){ return String(s||"").replace(/\s+/g,"").replace(/^[.\-]+/,""); }
 
-function buildRmSheet(title, counts){
+function buildRmSheet(title, counts, auto){
   const aoa = [];
   RM_TPL.forEach((row,i)=>{
     if(i === 0){ aoa.push([ "", title ]); return; }      // หัวเรื่อง
     if(i === 1){ aoa.push([ "ลำดับ","รายการความเสี่ยง","","Clinic" ]); return; }
     if(i === 2){ aoa.push([ "","","RCU1", ...RM_LEVELS, "รวม" ]); return; }
     const line = [ row.n, row.l ];
-    // หาค่าที่นับได้ของแถวนี้
+    // เติมแถวตัวหารเฉพาะที่ความหมายตรงกันจริง ที่เหลือเว้นว่างให้กรอกเอง
+    if(auto){
+      const k = rmNorm(row.l);
+      if(k === rmNorm("การให้เลือดทั้งหมดของหน่วยงาน(ครั้ง)")){ line.push(auto.blood || ""); aoa.push(line); return; }
+      if(k === rmNorm("จำนวนผป  on ETT")){ line.push(auto.vent || ""); aoa.push(line); return; }
+      if(k === rmNorm("Vent Day")){ line.push(auto.vent || ""); aoa.push(line); return; }
+      if(k === rmNorm("วันนอนรวม")){ line.push(auto.bedDays || ""); aoa.push(line); return; }
+    }
     let hit = null;
     const key = rmNorm(row.l);
     if(key){
@@ -2032,17 +2038,94 @@ function buildRmDashboard(yearBE){
     ["วิธีใช้งาน"],
     ["1) ชีตรายเดือน ต.ค. " + (yearBE-1) + " – ก.ย. " + yearBE + " ใช้บันทึกข้อมูล RM"],
     ["2) ชีต “รวมปี” สรุปข้อมูลทั้งปี"],
-    ["3) แถวตัวหาร (วันนอนรวม, Vent Day, CATH Day ฯลฯ) เว้นว่างไว้ — กรอกเอง"],
+    ["3) ชีต “รายละเอียด” ลิสต์ทุกอุบัติการณ์ทั้งปี (หมวด/ระดับ/เตียง/HN/คำอธิบาย/การแก้ไข)"],
     ["4) ตัวเลข A–I มาจากอุบัติการณ์ที่บันทึกในระบบ RCU1"],
+    ["5) เติมให้อัตโนมัติ: วันนอนรวม, Vent Day, จำนวน ผป. on ETT, การให้เลือดทั้งหมด"],
+    ["6) แถวตัวหารอื่น (CATH Day, Central line Day, VAP, CAUTI, BSI, Bed sore) เว้นว่าง — กรอกเอง"],
     [],["ชีตข้อมูล"]
   ];
   RM_MONTHS.forEach(m=>aoa.push([m.sheet]));
   aoa.push(["รวมปี"]);
+  aoa.push(["รายละเอียด"]);
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   ws["!cols"] = [{wch:70}];
   styleCell(ws,"A1",{font:{bold:true,sz:14,color:{rgb:"0D3B8C"}}});
   styleCell(ws,"A3",{font:{bold:true}});
   styleCell(ws,"A9",{font:{bold:true}});
+  return ws;
+}
+
+// ปีงบเปลี่ยนเดือนตุลาคม
+(function fillRmYears(){
+  const sel = document.getElementById("rm-year");
+  const now = new Date();
+  const curBE = now.getFullYear() + 543 + (now.getMonth() + 1 >= 10 ? 1 : 0);
+  for(let y = curBE + 1; y >= curBE - 3; y--){
+    const o = document.createElement("option");
+    o.value = y; o.textContent = `พ.ศ. ${y}  (ต.ค. ${y-1} – ก.ย. ${y})`;
+    if(y === curBE) o.selected = true;
+    sel.appendChild(o);
+  }
+})();
+
+// รวมค่าจากหัตถการ/ป4p ของเดือนหนึ่ง เพื่อเติมแถวตัวหารที่ความหมายตรงกัน
+function rmAuto(yearBE, m, back){
+  const yCE = (back ? yearBE - 1 : yearBE) - 543;
+  let blood = 0, vent = 0, bedDays = 0;
+  Object.keys(allDays).forEach(key=>{
+    const [yy,mm] = key.split("-").map(Number);
+    if(yy !== yCE || mm !== m) return;
+    const rec = allDays[key];
+    SHIFTS.forEach(sh=>{
+      const n = path=>{ const v = parseFloat(getDeep(rec.shifts[sh], path)); return isNaN(v) ? 0 : v; };
+      blood   += n("proc.p51") + n("proc.p52") + n("proc.p53");   // PRC/PC/FFP
+      vent    += n("proc.p1");                                     // On Volume respirator
+      bedDays += n("p4pd.bedDays");                                // จำนวนวันนอน
+    });
+  });
+  return { blood, vent, bedDays };
+}
+
+// ชีทรายละเอียด: 1 แถว = 1 อุบัติการณ์ ตลอดปีงบ
+function buildRmDetailSheet(yearBE){
+  const rows = [["วันที่","เวร","หมวด","รายการย่อย","ระดับ","เตียง","HN","รายละเอียดเหตุการณ์","การจัดการ/แก้ไข","Incharge"]];
+  const keys = Object.keys(allDays).filter(k=>{
+    const [yy,mm] = k.split("-").map(Number);
+    const beg = (yearBE - 1) - 543;   // ต.ค.–ธ.ค. ของปีก่อน
+    const end = yearBE - 543;         // ม.ค.–ก.ย. ของปีงบ
+    return (yy === beg && mm >= 10) || (yy === end && mm <= 9);
+  }).sort();
+
+  keys.forEach(k=>{
+    const [yy,mm,dd] = k.split("-").map(Number);
+    const thaiDate = `${dd}/${mm}/${yy+543}`;
+    SHIFTS.forEach(sh=>{
+      const arr = getDeep(allDays[k].shifts[sh], "events.incidents");
+      if(!Array.isArray(arr)) return;
+      arr.forEach(it=>{
+        if(!it || (!it.group && !it.detail)) return;
+        rows.push([thaiDate, sh, it.group||"", it.item||"", it.sev||"",
+                   it.bed||"", it.hn||"", it.detail||"", it.action||"",
+                   getDeep(allDays[k].shifts[sh], "incharge") || ""]);
+      });
+    });
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws["!cols"] = [{wch:11},{wch:7},{wch:30},{wch:32},{wch:7},{wch:7},{wch:11},{wch:40},{wch:32},{wch:20}];
+  ws["!freeze"] = {ySplit:1};
+  for(let col=0; col<=9; col++){
+    styleCell(ws, XLSX.utils.encode_cell({r:0,c:col}),
+      {font:{bold:true,color:{rgb:"0D3B8C"}},fill:{fgColor:{rgb:"E8F0FD"}},alignment:{horizontal:"center"}});
+  }
+  for(let r=1; r<rows.length; r++){
+    const high = SEV_HIGH.includes(rows[r][4]);
+    for(let col=0; col<=9; col++){
+      styleCell(ws, XLSX.utils.encode_cell({r,c:col}),
+        Object.assign({alignment:{horizontal:(col>=7?"left":"center"),wrapText:true}},
+                      high ? {fill:{fgColor:{rgb:"FDECEA"}}} : {}));
+    }
+  }
   return ws;
 }
 
@@ -2059,8 +2142,11 @@ function exportRM(){
     XLSX.utils.book_append_sheet(wb, buildRmDashboard(yearBE), "Dashboard");
 
     const yearTotal = {};
+    const yearAuto = { blood:0, vent:0, bedDays:0 };
     RM_MONTHS.forEach(mo=>{
       const counts = rmCount(yearBE, mo.m, mo.back);
+      const auto = rmAuto(yearBE, mo.m, mo.back);
+      yearAuto.blood += auto.blood; yearAuto.vent += auto.vent; yearAuto.bedDays += auto.bedDays;
       // สะสมเข้ารวมปี
       Object.keys(counts).forEach(k=>{
         if(!yearTotal[k]) yearTotal[k] = {};
@@ -2070,11 +2156,13 @@ function exportRM(){
       });
       const yShown = (mo.back ? yearBE - 1 : yearBE);
       const title = `รายงานอุบัติการณ์ เดือน ${mo.name}  ${yShown}  กลุ่มภารกิจด้านการพยาบาลปี  ${yearBE}`;
-      XLSX.utils.book_append_sheet(wb, buildRmSheet(title, counts), mo.sheet);
+      XLSX.utils.book_append_sheet(wb, buildRmSheet(title, counts, auto), mo.sheet);
     });
 
     XLSX.utils.book_append_sheet(wb,
-      buildRmSheet(`รายงานอุบัติการณ์ รวมทั้งปี  กลุ่มภารกิจด้านการพยาบาลปี  ${yearBE}`, yearTotal), "รวมปี");
+      buildRmSheet(`รายงานอุบัติการณ์ รวมทั้งปี  กลุ่มภารกิจด้านการพยาบาลปี  ${yearBE}`, yearTotal, yearAuto), "รวมปี");
+
+    XLSX.utils.book_append_sheet(wb, buildRmDetailSheet(yearBE), "รายละเอียด");
 
     XLSX.writeFile(wb, `RM_${yearBE}_RCU1.xlsx`);
   }catch(err){
