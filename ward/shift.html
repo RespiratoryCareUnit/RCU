@@ -296,6 +296,18 @@
     <span class="icon">📄</span>
     <span>แบบบันทึกเหตุการณ์_RCU (PDF)<small>1 แผ่น = 1 วันที่ แสดงครบ 3 เวร</small></span>
   </button>
+
+  <div class="month-range-box">
+    <div class="mr-title">⚠️ รายงานความเสี่ยง RM (ทั้งปีงบ)</div>
+    <div class="mr-row">
+      <label>ปีงบ พ.ศ.</label><input type="number" id="rm-year" value="2569" style="width:100px">
+    </div>
+    <div class="p4pd-hint">ปีงบ 2569 = ต.ค. 2568 – ก.ย. 2569 · แถวตัวหาร (วันนอนรวม, Vent Day ฯลฯ) เว้นว่างให้กรอกเอง</div>
+    <button class="export-btn" id="btn-export-rm" style="border-color:var(--danger);color:var(--danger);margin-top:8px;">
+      <span class="icon">⚠️</span>
+      <span>Export RM<small>14 ชีท: Dashboard + 12 เดือน + รวมปี</small></span>
+    </button>
+  </div>
 </section>
 
 </main>
@@ -1926,6 +1938,153 @@ async function exportPdfRange(){
     btn.disabled = false;
   }
 }
+
+const RM_TPL = [{"n": "", "l": "รายงานอุบัติการณ์ เดือน ตุลาคม  2569  กลุ่มภารกิจด้านการพยาบาลปี  2569"}, {"n": "ลำดับ", "l": "รายการความเสี่ยง"}, {"n": "", "l": ""}, {"n": "", "l": "วันนอนรวม "}, {"n": "", "l": "Vent Day"}, {"n": "", "l": "VAP"}, {"n": "", "l": "CATH Day"}, {"n": "", "l": "CAUTI "}, {"n": "", "l": "Central line Day"}, {"n": "", "l": "BSI "}, {"n": "", "l": "Bed sore Day"}, {"n": "", "l": "Bed sore"}, {"n": "", "l": "จำนวนผป  on ETT"}, {"n": "", "l": ""}, {"n": "", "l": ""}, {"n": "", "l": ""}, {"n": "", "l": "ด้าน  Clinic"}, {"n": 1, "l": "การให้เลือดปลอดภัย "}, {"n": "", "l": " 1.1  เตรียมผิดคน"}, {"n": "", "l": " 1.2  เจาะเลือดผิดคน"}, {"n": "", "l": " 1.3 ให้เลือดผิดคน "}, {"n": "", "l": " 1.4  ผิดชนิด"}, {"n": "", "l": " 1.5  ผิดขนาด"}, {"n": "", "l": " 1.6 อื่นๆ"}, {"n": 2, "l": "การผ่าตัดปลอดภัย "}, {"n": "", "l": "2.1 มีสิ่งตกค้างภายในร่างกายผู้ป่วย"}, {"n": "", "l": "2.2 set ผ่าตัด ผิดคน ผิดข้าง"}, {"n": "", "l": "2.3 งดเลื่อนผ่าตัดจากพยาบาล"}, {"n": "", "l": "2.4 เตรียมผ่าตัดไม่พร้อม"}, {"n": "", "l": "  .-  ไม่ได้ เซ็นใบยินยอม"}, {"n": "", "l": "  .-  ไม่ได้ NPO"}, {"n": "", "l": " .-  ไม่ได้ถอดฟันปลอม /ของมีค่า/ลบเล็บ"}, {"n": "", "l": "2.5 ส่งอุปกรณ์ไปORไม่ถูกต้อง"}, {"n": 3, "l": "ระบุตัวผู้ป่วย"}, {"n": "", "l": "3.1 ติดสติ๊กเกอร์ผิด"}, {"n": "", "l": "3.2 ส่งตรวจผิดคน/ส่งผ่าตัด"}, {"n": "", "l": "3.3 ส่ง Lab ผิดคน"}, {"n": "", "l": "3.4 ติด Lab ผิดคน"}, {"n": "", "l": "3.5ไม่ติดป้ายข้อมือ"}, {"n": "", "l": "3.6 เอ็กซเรย์ผิดคน"}, {"n": "", "l": "3.7 ป้ายข้อมือผิดคน"}, {"n": "", "l": "3.8 เรียกตรวจผิดคน/สมุดชมพู"}, {"n": "", "l": "3.9 ทำหัตถการผิดคน/set ORผิดข้าง"}, {"n": "", "l": "3.10 เจาะlab ผิดคน"}, {"n": "", "l": "3.11 ระบุเพศผิด"}, {"n": 4, "l": "มารดา/ทารกเสียชีวิต"}, {"n": "", "l": "4.1มารดาเสียชีวิตขณะดูแล"}, {"n": "", "l": "4.2ทารก Arrest ขณะอยู่กับมารดา"}, {"n": 5, "l": "ผู้ป่วยฆ่าตัวตายในโรงพยาบาล"}, {"n": 6, "l": "ET Tubeเลื่อน/หลุด/ดึงTube"}, {"n": "", "l": "ventday"}, {"n": "", "l": "6.1 ET- tubeเลื่อน/หลุด"}, {"n": "", "l": "6.2 ดึงTube"}, {"n": 7, "l": "พลัดตกหกล้ม/เป็นลม/ลื่น"}, {"n": "", "l": "7.1 พลัดตกหกล้ม/ลื่นหกล้ม"}, {"n": "", "l": "7.2 เป็นลม"}, {"n": "", "l": "7.3 ตกเตียง "}, {"n": "", "l": "7.4 ตกเก้าอี้"}, {"n": "", "l": "7.5 ตกเปล"}, {"n": 8, "l": "Admin Error"}, {"n": "", "l": "8.1 HAD (ระบุชื่อยา)"}, {"n": "", "l": "8.2 ระดับ D"}, {"n": "", "l": "8.3 ระดับ E ขึ้นไป (ต้องมีรายละเอียด)"}, {"n": 9, "l": "ผู้ป่วยมีภาวะArrest โดยไม่คาดคิด"}, {"n": "", "l": "9.1 ขณะรอตรวจ"}, {"n": "", "l": "9.2 ขณะส่งตรวจ/ทำหัตถการ"}, {"n": "", "l": "9.3 ขณะดูแล"}, {"n": 10, "l": "ย้าย ICU โดยไม่ได้วางแผน"}, {"n": 11, "l": "ทารก Arrest ขณะอยู่กับมารดา"}, {"n": 12, "l": "admitted ผิด ward"}, {"n": 13, "l": "เกิดแผลกดทับ(วันนอน)"}, {"n": "", "l": "13.1 ICU"}, {"n": "", "l": "13.2 Ward"}, {"n": 14, "l": "ดึง/เลื่อนหลุด (NG,Cath,Drain,Device)"}, {"n": "", "l": "16.1 C line"}, {"n": "", "l": "16.2 Foley cath"}, {"n": "", "l": "16.3 Drain"}, {"n": "", "l": "16.4 Cutdown"}, {"n": 15, "l": "Pheblitis/Extravasation"}, {"n": 16, "l": "บาดเจ็บจากการถูกรัดตรึง"}, {"n": 17, "l": "แพ้ยาซ้ำ"}, {"n": 18, "l": "ผู้ป่วยหนีกลับ"}, {"n": 19, "l": "การสื่อสาร"}, {"n": 20, "l": "เจ้าหน้าที่บาดเจ็บ"}, {"n": "", "l": "20.1 ถูกเข็มทิ่มตำ"}, {"n": "", "l": "20.2 ถูกของมีคมตำ/บาด"}, {"n": "", "l": "20.3 สารคัดหลั่งกระเด็นเข้าตา/ปาก"}, {"n": 21, "l": "เจ้าหน้าที่ถูกทำร้าย"}, {"n": 22, "l": "Training Risk"}, {"n": "", "l": "22.1 นศ.แพทย์"}, {"n": "", "l": "22.2 นศ.พยาบาล"}, {"n": "", "l": "22.3 RN ใหม่"}, {"n": 23, "l": "ข้อร้องเรียน"}, {"n": "", "l": "23.1พฤติกรรมบริการ"}, {"n": "", "l": "23.2ละเมิดสิทธิ์ผู้รับบริการ"}, {"n": "", "l": "ด้าน Non Clinic"}, {"n": 24, "l": "น้ำยา/อุปกรณ์หมดอายุ"}, {"n": 25, "l": "เครืองมือ/อุปกรณ์ติดไปกับผ้า"}, {"n": 26, "l": "เครื่องมือไม่พร้อมใช้ /วัสดุขาดคราว"}, {"n": 27, "l": "ผ้าไม่พอใช้"}, {"n": 28, "l": "ท่อน้ำประปารั่ว/ชำรุด"}, {"n": "", "l": "Med Error"}, {"n": "", "l": "Precribing error (สั่งยาผิด)"}, {"n": "", "l": "Dispensing (จ่ายยาผิด)"}, {"n": "", "l": "key ยาผิด / ไม่คียา"}, {"n": 1, "l": "Right Patient"}, {"n": "", "l": "-ให้ยาผิดคน"}, {"n": 2, "l": "Right Drug"}, {"n": "", "l": "-ให้ยาผิดชนิด"}, {"n": "", "l": "-ให้ยาที่แพทย์ไม่มีคำสั่งการรักษา"}, {"n": "", "l": "-ให้ยาที่ผู้ป่วยเคยมีประวัติแพ้ยา"}, {"n": "", "l": "-ให้ยาที่หมดอายุ"}, {"n": "", "l": "-ให้ยาเสื่อมคุณภาพ"}, {"n": 3, "l": "Right Dose"}, {"n": "", "l": "-ให้ยาผิดขนาด"}, {"n": "", "l": "-คำนวนขนาดยาผิด"}, {"n": "", "l": "-ไม่สามารถใช้ยาที่มีเทคนิคบริหารพิเศษ เช่นยาพ่น"}, {"n": "", "l": "-ให้ยาผิดความแรง"}, {"n": "", "l": "-ให้ยาผิดความเข้มข้น"}, {"n": "", "l": "-การเจือจางผิดสัดส่วน"}, {"n": "", "l": "-ให้ยาซ้ำ"}, {"n": "", "l": "-ให้ให้ยาที่แพทย์สั่งหยุด"}, {"n": "", "l": "-การต่อยาโดยที่แพทย์ไม่ได้สั่ง"}, {"n": "", "l": "-ไม่ได้ให้ยา / ลืมให้ยา / ข้ามไปให้เวลาใหม่"}, {"n": 4, "l": "Right Time"}, {"n": "", "l": "-ให้ยาผิดไปจากเวลาที่กำหนด"}, {"n": "", "l": "-ลืมให้ยา ให้เมื่อนึกได้"}, {"n": "", "l": "-หยดให้ยาเร็วกว่าแพทย์กำหนด"}, {"n": "", "l": "-หยดให้ยายาวนานกว่าแพทย์กำหนด"}, {"n": "", "l": "-ให้ยาคลาดเคลื่อนระหว่างก่อน/หลังอาหาร"}, {"n": 5, "l": "Right Route"}, {"n": "", "l": "-ผิดช่องทางเช่น IV IM Sc Oral"}, {"n": "", "l": "-ให้ยาผิดอวัยวะ / ผิดข้าง"}, {"n": 6, "l": "Right Technique"}, {"n": "", "l": "-ผสมเข้าด้วยกันไม่เหมาะสม"}, {"n": "", "l": "-บริหารยาร่วม Y site ที่ไม่เหมาะสม"}, {"n": "", "l": "-เดินยาเร็ว/ช้า กว่าที่ควรจะเป็น"}, {"n": "", "l": "-เจือจางด้วยสารละลายที่ไม่เหมาะสม"}, {"n": "", "l": "-ให้ยาผิดลำดับ(เคมีบำบัด)"}, {"n": "", "l": "-บริหารยาด้วยเทคนิคไม่เหมาะสมส่งผลให้เกิดเหตุการณ์ไม่พึงประสงค์"}, {"n": "", "l": "-บดยาที่ไม่ควรบด"}, {"n": 7, "l": "Right Record (ลงได้เฉพาะกรณี A Bที่ไม่มีผลต่อผู้ป่วย)"}, {"n": "", "l": "-ไม่ลงชื่อในการบริหารยา"}, {"n": "", "l": "-ไม่ได้ OFF ยา ในใบ MAR"}, {"n": "", "l": "-ไม่คัดลอกรายการยาในใบ MAR"}, {"n": "", "l": "-คัดลอกใบ MAR ผิดคน"}, {"n": "", "l": "-คัดลอกใบ MAR ผิดชนิด"}, {"n": "", "l": "-คัดลอกใบ MAR ผิดขนาด/ความแรง"}, {"n": "", "l": "-คัดลอกใบ MAR ผิดเวลา"}, {"n": "", "l": "-คัดลอกใบ MAR ผิดวิธี"}, {"n": "", "l": "-คัดลอกใบ MAR ผิดเทคนิคการบริหารยา"}, {"n": 8, "l": "การเบิกยา (ลงได้เฉพาะกรณี A Bที่ไม่มีผลต่อผู้ป่วย)"}, {"n": "", "l": "-เบิกยาผิดคน"}, {"n": "", "l": ""}, {"n": "", "l": "การจองเลือดทั้งหมดของหน่วยงาน(ครั้ง)"}, {"n": "", "l": "การให้เลือดทั้งหมดของหน่วยงาน(ครั้ง)"}];
+
+/* ---------------- Export RM: 14 ชีทเหมือนต้นฉบับ ---------------- */
+const RM_MONTHS = [   // ปีงบเริ่ม ต.ค. ของปีก่อนหน้า
+  {sheet:"ตค", name:"ตุลาคม",   m:10, back:true},  {sheet:"พย ", name:"พฤศจิกายน", m:11, back:true},
+  {sheet:"ธค", name:"ธันวาคม",  m:12, back:true},  {sheet:"มค",  name:"มกราคม",    m:1},
+  {sheet:"กพ", name:"กุมภาพันธ์", m:2},             {sheet:"มีค", name:"มีนาคม",    m:3},
+  {sheet:"เมย",name:"เมษายน",   m:4},              {sheet:"พค",  name:"พฤษภาคม",   m:5},
+  {sheet:"มิย",name:"มิถุนายน",  m:6},              {sheet:"กค",  name:"กรกฎาคม",   m:7},
+  {sheet:"สค", name:"สิงหาคม",  m:8},              {sheet:"กย",  name:"กันยายน",   m:9}
+];
+const RM_LEVELS = ["A","B","C","D","E","F","G","H","I"];
+
+// นับอุบัติการณ์ของเดือนหนึ่ง -> { "ชื่อรายการ": {A:0,...} }
+function rmCount(yearBE, m, back){
+  const yCE = (back ? yearBE - 1 : yearBE) - 543;
+  const out = {};
+  Object.keys(allDays).forEach(key=>{
+    const [yy,mm] = key.split("-").map(Number);
+    if(yy !== yCE || mm !== m) return;
+    const rec = allDays[key];
+    SHIFTS.forEach(sh=>{
+      const arr = getDeep(rec.shifts[sh], "events.incidents");
+      if(!Array.isArray(arr)) return;
+      arr.forEach(it=>{
+        if(!it || !it.sev) return;
+        // ลงที่รายการย่อยถ้ามี ไม่งั้นลงที่หมวด
+        const label = (it.item && it.item.trim()) ? it.item : it.group;
+        if(!label) return;
+        if(!out[label]) out[label] = {};
+        out[label][it.sev] = (out[label][it.sev] || 0) + 1;
+      });
+    });
+  });
+  return out;
+}
+
+// ชื่อในไฟล์ต้นฉบับมีช่องว่าง/จุดปน จึงเทียบแบบตัดช่องว่าง
+function rmNorm(s){ return String(s||"").replace(/\s+/g,"").replace(/^[.\-]+/,""); }
+
+function buildRmSheet(title, counts){
+  const aoa = [];
+  RM_TPL.forEach((row,i)=>{
+    if(i === 0){ aoa.push([ "", title ]); return; }      // หัวเรื่อง
+    if(i === 1){ aoa.push([ "ลำดับ","รายการความเสี่ยง","","Clinic" ]); return; }
+    if(i === 2){ aoa.push([ "","","RCU1", ...RM_LEVELS, "รวม" ]); return; }
+    const line = [ row.n, row.l ];
+    // หาค่าที่นับได้ของแถวนี้
+    let hit = null;
+    const key = rmNorm(row.l);
+    if(key){
+      for(const k in counts){ if(rmNorm(k) === key){ hit = counts[k]; break; } }
+    }
+    if(hit){
+      line.push("");                                     // คอลัมน์ RCU1
+      let sum = 0;
+      RM_LEVELS.forEach(L=>{ const v = hit[L] || 0; line.push(v || ""); sum += v; });
+      line.push(sum || "");
+    }
+    aoa.push(line);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws["!cols"] = [{wch:7},{wch:46},{wch:8}].concat(Array(9).fill({wch:5}), [{wch:8}]);
+  ws["!freeze"] = {xSplit:2, ySplit:3};
+  styleCell(ws,"B1",{font:{bold:true,sz:12,color:{rgb:"0D3B8C"}}});
+  ["A2","B2","D2"].forEach(a=>styleCell(ws,a,{font:{bold:true},fill:{fgColor:{rgb:"E8F0FD"}},alignment:{horizontal:"center"}}));
+  for(let col=2; col<=12; col++){
+    styleCell(ws, XLSX.utils.encode_cell({r:2,c:col}),
+      {font:{bold:true,color:{rgb:"0D3B8C"}},fill:{fgColor:{rgb:"E8F0FD"}},alignment:{horizontal:"center"}});
+  }
+  RM_TPL.forEach((row,i)=>{
+    if(i < 3) return;
+    const isHead = String(row.n).trim() !== "" || /^ด้าน|^Med Error/.test(row.l);
+    if(isHead){
+      for(let col=0; col<=12; col++) styleCell(ws, XLSX.utils.encode_cell({r:i,c:col}),
+        {font:{bold:true,color:{rgb:"082A66"}},fill:{fgColor:{rgb:"DDE6F7"}}});
+    } else {
+      styleCell(ws, XLSX.utils.encode_cell({r:i,c:1}), {alignment:{horizontal:"left",wrapText:true}});
+      for(let col=3; col<=11; col++) styleCell(ws, XLSX.utils.encode_cell({r:i,c:col}), {alignment:{horizontal:"center"}});
+      styleCell(ws, XLSX.utils.encode_cell({r:i,c:12}),
+        {font:{bold:true},fill:{fgColor:{rgb:"FFF4E0"}},alignment:{horizontal:"center"}});
+    }
+  });
+  return ws;
+}
+
+function buildRmDashboard(yearBE){
+  const aoa = [
+    [`RM ${yearBE} – RCU1`],[],
+    ["วิธีใช้งาน"],
+    ["1) ชีตรายเดือน ต.ค. " + (yearBE-1) + " – ก.ย. " + yearBE + " ใช้บันทึกข้อมูล RM"],
+    ["2) ชีต “รวมปี” สรุปข้อมูลทั้งปี"],
+    ["3) แถวตัวหาร (วันนอนรวม, Vent Day, CATH Day ฯลฯ) เว้นว่างไว้ — กรอกเอง"],
+    ["4) ตัวเลข A–I มาจากอุบัติการณ์ที่บันทึกในระบบ RCU1"],
+    [],["ชีตข้อมูล"]
+  ];
+  RM_MONTHS.forEach(m=>aoa.push([m.sheet]));
+  aoa.push(["รวมปี"]);
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws["!cols"] = [{wch:70}];
+  styleCell(ws,"A1",{font:{bold:true,sz:14,color:{rgb:"0D3B8C"}}});
+  styleCell(ws,"A3",{font:{bold:true}});
+  styleCell(ws,"A9",{font:{bold:true}});
+  return ws;
+}
+
+function exportRM(){
+  const btn = document.getElementById("btn-export-rm");
+  const lab = btn.querySelector("span:last-child");
+  const orig = lab.innerHTML;
+  lab.innerHTML = "⏳ กำลังสร้างไฟล์...";
+  btn.disabled = true;
+  try{
+    saveStore();
+    const yearBE = parseInt(document.getElementById("rm-year").value) || 2569;
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, buildRmDashboard(yearBE), "Dashboard");
+
+    const yearTotal = {};
+    RM_MONTHS.forEach(mo=>{
+      const counts = rmCount(yearBE, mo.m, mo.back);
+      // สะสมเข้ารวมปี
+      Object.keys(counts).forEach(k=>{
+        if(!yearTotal[k]) yearTotal[k] = {};
+        RM_LEVELS.forEach(L=>{
+          if(counts[k][L]) yearTotal[k][L] = (yearTotal[k][L] || 0) + counts[k][L];
+        });
+      });
+      const yShown = (mo.back ? yearBE - 1 : yearBE);
+      const title = `รายงานอุบัติการณ์ เดือน ${mo.name}  ${yShown}  กลุ่มภารกิจด้านการพยาบาลปี  ${yearBE}`;
+      XLSX.utils.book_append_sheet(wb, buildRmSheet(title, counts), mo.sheet);
+    });
+
+    XLSX.utils.book_append_sheet(wb,
+      buildRmSheet(`รายงานอุบัติการณ์ รวมทั้งปี  กลุ่มภารกิจด้านการพยาบาลปี  ${yearBE}`, yearTotal), "รวมปี");
+
+    XLSX.writeFile(wb, `RM_${yearBE}_RCU1.xlsx`);
+  }catch(err){
+    showPopup("สร้างไฟล์ RM ไม่สำเร็จ\n" + (err.message || err));
+  }finally{
+    lab.innerHTML = orig;
+    btn.disabled = false;
+  }
+}
+document.getElementById("btn-export-rm").addEventListener("click", exportRM);
 
 document.getElementById("btn-export-hattakan").addEventListener("click", ()=>{
   exportMode === "month" ? exportHattakanMonths() : exportHattakanDay();
