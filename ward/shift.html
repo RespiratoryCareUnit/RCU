@@ -168,6 +168,33 @@
   .event-field textarea{min-height:44px;resize:vertical;}
   .event-row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
   .event-field input[readonly]{background:#f0f0f0;color:#555;}
+  .ic-wrap{margin-top:8px;}
+  .ic-empty,.ic-hint{font-size:.72rem;color:#888;display:block;}
+  .ic-follow{display:flex;align-items:flex-start;gap:8px;background:#fff;border:1px solid var(--line);
+             border-radius:10px;padding:9px;margin-bottom:7px;}
+  .ic-follow input[type=checkbox]{width:19px;height:19px;flex:0 0 auto;margin-top:2px;}
+  .ic-follow-main{flex:1;min-width:0;font-size:.76rem;line-height:1.45;}
+  .ic-sub{display:block;font-size:.68rem;color:#6b7690;}
+  .ic-warn{display:block;font-size:.68rem;color:#8a6d1f;background:#fff8e8;border:1px solid #f0dfa8;
+           border-radius:5px;padding:3px 6px;margin-top:4px;}
+  .ic-close-btn{background:#fff;border:1.5px solid var(--danger);color:var(--danger);border-radius:6px;
+                padding:3px 8px;font-size:.64rem;font-weight:700;cursor:pointer;flex:0 0 auto;}
+  .ic-add-follow,.ic-add-new{width:100%;background:#fff;border:1.5px dashed var(--navy);color:var(--navy);
+            border-radius:8px;padding:9px;font-size:.74rem;font-weight:700;cursor:pointer;}
+  .ic-card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px;}
+  .ic-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+  .ic-head span{font-size:.74rem;font-weight:700;color:var(--navy-deep);}
+  .ic-del{background:#fff;border:1.5px solid var(--danger);color:var(--danger);border-radius:6px;
+          padding:3px 9px;font-size:.66rem;font-weight:700;cursor:pointer;}
+  .ic-card label{display:block;font-size:.66rem;color:#666;margin:6px 0 2px;}
+  .ic-card input,.ic-card select,.ic-card textarea{width:100%;padding:7px;border:1px solid var(--line);
+          border-radius:6px;font-size:.78rem;font-family:inherit;background:#fff;}
+  .ic-card input:disabled,.ic-card select:disabled,.ic-card textarea:disabled{background:#f2f2f2;color:#777;opacity:1;}
+  .ic-patient{margin:6px 0;padding:7px 9px;background:#eef3fb;border-radius:7px;font-size:.72rem;line-height:1.45;}
+  .ic-found{color:var(--navy-deep);}
+  .ic-mode-btn{flex:1;padding:8px;border:1.5px solid var(--navy);background:#fff;color:var(--navy);
+               border-radius:8px;font-size:.8rem;font-weight:700;cursor:pointer;}
+  .ic-mode-btn.active{background:var(--navy);color:#fff;}
   .inc-wrap{margin-top:8px;}
   .inc-card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px;}
   .inc-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
@@ -305,6 +332,24 @@
     <button class="export-btn" id="btn-export-rm" style="border-color:var(--danger);color:var(--danger);margin-top:8px;">
       <span class="icon">⚠️</span>
       <span>Export RM</span>
+    </button>
+  </div>
+
+  <div class="month-range-box">
+    <div class="mr-title">🦠 รายงานเชื้อดื้อยา IC</div>
+    <div class="exp-mode-row">
+      <button type="button" class="ic-mode-btn active" data-icmode="month">รายเดือน</button>
+      <button type="button" class="ic-mode-btn" data-icmode="year">รายปีงบ</button>
+    </div>
+    <div class="mr-row" id="ic-month-row">
+      <label>เดือน</label><input type="month" id="ic-month">
+    </div>
+    <div class="mr-row" id="ic-year-row" style="display:none;">
+      <label>ปีงบ</label><select id="ic-year"></select>
+    </div>
+    <button class="export-btn" id="btn-export-ic" style="border-color:#0f7d84;color:#0f7d84;margin-top:8px;">
+      <span class="icon">🦠</span>
+      <span>Export IC</span>
     </button>
   </div>
 </section>
@@ -858,7 +903,61 @@ function setIncidents(sh, arr){
 
 const GENERAL_OPTIONS = ["เหตุการณ์ทั่วไปปกติ","พบอุบัติการณ์ดังนี้"];
 const ETHICS_OPTIONS = ["ไม่พบความเสี่ยงด้านจริยธรรม","พบความเสี่ยงด้านจริยธรรม"];
-const GERM_OPTIONS = ["ไม่พบเชื้อดื้อยารายใหม่","พบเชื้อดื้อยา"];
+const GERM_OPTIONS = ["ไม่พบเชื้อดื้อยารายใหม่","พบเชื้อดื้อยา","พบเชื้อดื้อยารายใหม่"];
+const IC_ORGANISMS = ["MRSA","CRE","VRE","MDR-AB","ESBL","Pseudomonas MDR","C. difficile","อื่นๆ"];
+const IC_SPECIMENS = ["Sputum","UC","แผล","H/C","C-line","DLC"];
+const IC_SEND_STATUS = ["รอพิจารณา","ส่ง IC แล้ว","ไม่ส่ง"];
+const IC_CLOSE_REASONS = ["เพาะเชื้อไม่ขึ้นแล้ว","จำหน่าย/ย้ายออก","อื่นๆ"];
+const IC_FOLLOW_DAYS = 30;   // ย้อนหลังที่ดึงมาแสดง
+const IC_WARN_DAYS  = 14;    // เตือนเมื่อเคสเปิดนานเกินนี้
+
+// ---- ข้อมูลผู้ป่วยจากระบบลงทะเบียน (อ่านอย่างเดียว) ----
+const REG_URL = "https://script.google.com/macros/s/AKfycbwDmLwbpt_BD-UrxlMJuD93PvCTJaq6MwobogqVu3AP_CtlRD9EgbzO0IQmnyI5ge1xHA/exec";
+let regPatients = null;          // null = ยังไม่โหลด
+async function loadRegistry(){
+  if(regPatients) return regPatients;
+  try{
+    const res = await fetch(REG_URL + "?action=load&t=" + Date.now());
+    const j = await res.json();
+    regPatients = (j && j.ok && Array.isArray(j.patients)) ? j.patients : [];
+  }catch(err){ regPatients = []; }
+  return regPatients;
+}
+function regFind(hn){
+  if(!regPatients || !hn) return null;
+  const key = String(hn).trim();
+  return regPatients.find(p => String(p.hn || "").trim() === key) || null;
+}
+function regIsDischarged(hn){
+  const p = regFind(hn);
+  if(!p) return false;
+  return !!(p.dischargeDate || String(p.status || "").includes("จำหน่าย"));
+}
+
+// ---- ทะเบียนเชื้อ: เก็บรวมไว้ที่เดียว ไม่ผูกกับวัน ----
+const IC_KEY = "ic_cases";
+function icAll(){
+  try{ const v = JSON.parse(localStorage.getItem(IC_KEY) || "[]"); return Array.isArray(v) ? v : []; }
+  catch(e){ return []; }
+}
+function icSave(list){
+  localStorage.setItem(IC_KEY, JSON.stringify(list));
+  scheduleCloudSave && scheduleCloudSave();
+}
+function daysBetween(aISO, bISO){
+  const a = new Date(aISO + "T00:00:00"), b = new Date(bISO + "T00:00:00");
+  return Math.round((b - a) / 86400000);
+}
+// เคสที่ยังติดตามอยู่ ณ วันที่กำหนด
+function icActive(dateKey){
+  return icAll().filter(x=>{
+    if(x.closed) return false;
+    const age = daysBetween(x.foundDate || x.createdDate, dateKey);
+    if(age < 0 || age > IC_FOLLOW_DAYS) return false;
+    if(regIsDischarged(x.hn)) return false;
+    return true;
+  });
+}
 const HN_FIXED_NAME = "คุณลักษณา มะโนชัย";
 
 function buildSelectOptions(list, current){
@@ -867,6 +966,183 @@ function buildSelectOptions(list, current){
 
 let shiftEditState = { "ดึก":"editing", "เช้า":"editing", "บ่าย":"editing" };
 
+
+/* ---------------- เชื้อดื้อยา (IC) ---------------- */
+// รายการติดตาม: ติ๊กว่าวันนี้ยังพบผู้ป่วยรายนั้นอยู่
+function renderIcFollow(sh, locked){
+  const dis = locked ? "disabled" : "";
+  const active = icActive(currentDateKey);
+  const ticked = getDeep(data.shifts[sh], "events.germFollow") || {};
+  let html = `<div class="ic-wrap">`;
+  if(!active.length){
+    html += `<div class="ic-empty">ยังไม่มีผู้ป่วยเชื้อดื้อยาที่ติดตามอยู่ — ลงรายใหม่ได้ที่ตัวเลือก "พบเชื้อดื้อยารายใหม่"</div>`;
+  } else {
+    active.forEach(x=>{
+      // เคยติ๊กไว้ = ติ๊กต่อให้เอง จนกว่าจะเอาออกหรือปิดเคส
+      const on = (ticked[x.id] === undefined) ? true : !!ticked[x.id];
+      const age = daysBetween(x.foundDate || x.createdDate, currentDateKey);
+      html += `<label class="ic-follow">
+        <input type="checkbox" ${dis} ${on?"checked":""} class="ic-tick" data-sh="${sh}" data-id="${x.id}">
+        <span class="ic-follow-main">
+          <b>เตียง ${x.bed||"-"} · ${x.name||"(ไม่ทราบชื่อ)"}</b>
+          <span class="ic-sub">${x.organism||"-"}${x.hn?` · HN ${x.hn}`:""} · ลงเมื่อ ${thaiShort(x.foundDate||x.createdDate)} (${age} วัน)</span>
+          ${age >= IC_WARN_DAYS ? `<span class="ic-warn">⚠ ติดตามมา ${age} วันแล้ว — ยังพบเชื้ออยู่ไหม?</span>` : ""}
+        </span>
+        ${locked?"":`<button type="button" class="ic-close-btn" data-id="${x.id}">ปิดเคส</button>`}
+      </label>`;
+    });
+  }
+  if(!locked) html += `<button type="button" class="ic-add-follow" data-sh="${sh}">+ เพิ่มเอง (ไม่อยู่ในรายการ)</button>`;
+  html += `</div>`;
+  return html;
+}
+
+function thaiShort(iso){
+  if(!iso) return "-";
+  const [y,m,d] = iso.split("-").map(Number);
+  return `${d}/${m}/${y+543}`;
+}
+
+// ฟอร์มลงรายใหม่
+function renderIcNew(sh, locked){
+  const dis = locked ? "disabled" : "";
+  const list = icAll().filter(x => x.shift === sh && x.createdDate === currentDateKey);
+  let html = `<div class="ic-wrap">`;
+  list.forEach(x=>{
+    html += `<div class="ic-card">
+      <div class="ic-head">
+        <span>เชื้อดื้อยารายใหม่</span>
+        ${locked?"":`<button type="button" class="ic-del" data-id="${x.id}">ลบ</button>`}
+      </div>
+      <div class="event-row2">
+        <div><label>HN</label>
+          <input ${dis} type="text" class="ic-f" data-id="${x.id}" data-k="hn" value="${x.hn||""}" placeholder="พิมพ์ HN"></div>
+        <div><label>เตียง</label>
+          <input ${dis} type="text" class="ic-f" data-id="${x.id}" data-k="bed" value="${x.bed||""}"></div>
+      </div>
+      <div class="ic-patient" data-for="${x.id}">${icPatientLine(x)}</div>
+      <div class="event-row2">
+        <div><label>เชื้อ</label>
+          <select ${dis} class="ic-f" data-id="${x.id}" data-k="organism">
+            <option value="">-- เลือก --</option>
+            ${IC_ORGANISMS.map(o=>`<option ${o===x.organism?"selected":""}>${o}</option>`).join("")}
+          </select></div>
+        <div><label>สิ่งส่งตรวจ</label>
+          <select ${dis} class="ic-f" data-id="${x.id}" data-k="specimen">
+            <option value="">-- เลือก --</option>
+            ${IC_SPECIMENS.map(o=>`<option ${o===x.specimen?"selected":""}>${o}</option>`).join("")}
+          </select></div>
+      </div>
+      ${x.organism === "อื่นๆ" ? `<label>ระบุชื่อเชื้อ</label>
+        <input ${dis} type="text" class="ic-f" data-id="${x.id}" data-k="organismOther" value="${x.organismOther||""}">` : ""}
+      <div class="event-row2">
+        <div><label>วันที่ส่ง lab</label>
+          <input ${dis} type="date" class="ic-f" data-id="${x.id}" data-k="labDate" value="${x.labDate||""}"></div>
+        <div><label>วันที่ผลเพาะเชื้อ</label>
+          <input ${dis} type="date" class="ic-f" data-id="${x.id}" data-k="foundDate" value="${x.foundDate||""}"></div>
+      </div>
+      <label>สถานะส่ง IC</label>
+      <select ${dis} class="ic-f" data-id="${x.id}" data-k="sendStatus">
+        ${IC_SEND_STATUS.map(o=>`<option ${o===x.sendStatus?"selected":""}>${o}</option>`).join("")}
+      </select>
+      <label>หมายเหตุ</label>
+      <textarea ${dis} rows="2" class="ic-f" data-id="${x.id}" data-k="note">${x.note||""}</textarea>
+    </div>`;
+  });
+  if(!locked) html += `<button type="button" class="ic-add-new" data-sh="${sh}">+ เพิ่มรายการเชื้อ</button>`;
+  html += `</div>`;
+  return html;
+}
+
+function icPatientLine(x){
+  if(!x.hn) return `<span class="ic-hint">พิมพ์ HN เพื่อดึงข้อมูลผู้ป่วย</span>`;
+  const p = regFind(x.hn);
+  if(!p) return `<span class="ic-hint">ไม่พบ HN นี้ในระบบลงทะเบียน — กรอกชื่อเอง:
+    <input type="text" class="ic-f" data-id="${x.id}" data-k="name" value="${x.name||""}" placeholder="ชื่อ-นามสกุล"></span>`;
+  return `<span class="ic-found"><b>${p.name||"-"}</b>${p.age?` · ${p.gender||""} ${p.age} ปี`:""}
+    ${p.admitFrom?` · รับจาก ${p.admitFrom}`:""}${p.diagnosis?` · ${p.diagnosis}`:""}</span>`;
+}
+
+// ---- handlers ของ IC ----
+function icNewId(){ return "ic" + Date.now() + Math.random().toString(36).slice(2,6); }
+
+document.getElementById("daily-table-wrap").addEventListener("click", (e)=>{
+  const addNew = e.target.closest(".ic-add-new");
+  const addFol = e.target.closest(".ic-add-follow");
+  const del    = e.target.closest(".ic-del");
+  const close  = e.target.closest(".ic-close-btn");
+
+  if(addNew){
+    const list = icAll();
+    list.push({ id:icNewId(), shift:addNew.dataset.sh, createdDate:currentDateKey,
+                hn:"", bed:"", name:"", organism:"", organismOther:"", specimen:"",
+                labDate:currentDateKey, foundDate:"", sendStatus:IC_SEND_STATUS[0],
+                note:"", closed:false });
+    icSave(list); renderEventsRow();
+  } else if(addFol){
+    // เพิ่มเองสำหรับรายที่ไม่ได้ลงทะเบียนไว้ — ถือเป็นเคสหนึ่งเหมือนกัน
+    const list = icAll();
+    list.push({ id:icNewId(), shift:addFol.dataset.sh, createdDate:currentDateKey,
+                hn:"", bed:"", name:"", organism:"", organismOther:"", specimen:"",
+                labDate:currentDateKey, foundDate:currentDateKey,
+                sendStatus:IC_SEND_STATUS[0], note:"", closed:false, manual:true });
+    icSave(list);
+    setDeep(data.shifts[addFol.dataset.sh], "events.germStatus", GERM_OPTIONS[2]);
+    saveStore(); renderEventsRow();
+    showPopup("เพิ่มรายการใหม่แล้ว — กรอกข้อมูลในฟอร์ม \"พบเชื้อดื้อยารายใหม่\"");
+  } else if(del){
+    icSave(icAll().filter(x=>x.id !== del.dataset.id));
+    renderEventsRow();
+  } else if(close){
+    const id = close.dataset.id;
+    const reason = prompt("เหตุผลที่ปิดเคส:\n1 = เพาะเชื้อไม่ขึ้นแล้ว\n2 = จำหน่าย/ย้ายออก\n3 = อื่นๆ", "1");
+    if(reason === null) return;
+    const list = icAll();
+    const it = list.find(x=>x.id === id);
+    if(it){
+      it.closed = true;
+      it.closeReason = IC_CLOSE_REASONS[(parseInt(reason)||1) - 1] || IC_CLOSE_REASONS[2];
+      it.closeDate = currentDateKey;
+      icSave(list); renderEventsRow();
+    }
+  }
+});
+
+document.getElementById("daily-table-wrap").addEventListener("input", async (e)=>{
+  const t = e.target.closest(".ic-f");
+  if(!t || t.tagName === "SELECT") return;
+  const list = icAll();
+  const it = list.find(x=>x.id === t.dataset.id);
+  if(!it) return;
+  it[t.dataset.k] = t.value;
+  icSave(list);
+  if(t.dataset.k === "hn"){
+    await loadRegistry();
+    const box = document.querySelector(`.ic-patient[data-for="${it.id}"]`);
+    if(box) box.innerHTML = icPatientLine(it);
+    const p = regFind(it.hn);
+    if(p){ it.name = p.name || ""; icSave(list); }   // เก็บชื่อติดไปกับเคส
+  }
+});
+
+document.getElementById("daily-table-wrap").addEventListener("change", (e)=>{
+  const sel  = e.target.closest("select.ic-f");
+  const tick = e.target.closest(".ic-tick");
+  if(sel){
+    const list = icAll();
+    const it = list.find(x=>x.id === sel.dataset.id);
+    if(!it) return;
+    it[sel.dataset.k] = sel.value;
+    icSave(list);
+    if(sel.dataset.k === "organism") renderEventsRow();   // โชว์ช่อง "ระบุชื่อเชื้อ"
+  } else if(tick){
+    const sh = tick.dataset.sh;
+    const cur = getDeep(data.shifts[sh], "events.germFollow") || {};
+    cur[tick.dataset.id] = tick.checked;
+    setDeep(data.shifts[sh], "events.germFollow", cur);
+    saveStore();
+  }
+});
 
 /* ---------------- อุบัติการณ์ (RM) ---------------- */
 function renderIncidents(sh, locked){
@@ -1002,12 +1278,8 @@ function buildEventCardHtml(sh){
 
       <div class="event-field"><label>เชื้อดื้อยา</label>
         <select ${dis} data-shift="${sh}" data-f="events.germStatus" class="conditional-select">${buildSelectOptions(GERM_OPTIONS, germStatus)}</select>
-        ${showGermDetail ? `<div class="germ-pairs">
-          ${[1,2,3].map(i=>`<div class="event-row2">
-            <div class="event-field"><label>เตียง</label><input ${dis} type="text" data-shift="${sh}" data-f="events.germBeds${i}" value="${g('events.germBeds'+i)}"></div>
-            <div class="event-field"><label>เชื้อ</label><input ${dis} type="text" data-shift="${sh}" data-f="events.germType${i}" value="${g('events.germType'+i)}"></div>
-          </div>`).join("")}
-        </div>` : ""}
+        ${germStatus === GERM_OPTIONS[1] ? renderIcFollow(sh, submitted) : ""}
+        ${germStatus === GERM_OPTIONS[2] ? renderIcNew(sh, submitted) : ""}
       </div>
 
       <div class="event-row2">
@@ -1252,6 +1524,15 @@ async function cloudLoad(silent){
     let n = 0;
     Object.keys(days).forEach(k=>{ allDays[k] = days[k]; n++; });
     localStorage.setItem(STORE_KEY, JSON.stringify(allDays));
+
+    // ดึงทะเบียนเชื้อจากส่วนกลางด้วย
+    try{
+      const r2 = await fetch(`${CLOUD_URL}?kind=ic&date=registry&pw=${encodeURIComponent(AUTH_PW)}`);
+      const d2 = await r2.json();
+      if(d2.ok && d2.data && Array.isArray(d2.data.cases)){
+        localStorage.setItem(IC_KEY, JSON.stringify(d2.data.cases));
+      }
+    }catch(e){ /* โหลดทะเบียนเชื้อไม่ได้ ใช้ของในเครื่องต่อไป */ }
     // re-open the current date so the screen shows what just arrived
     switchToDate(currentDateKey);
     renderAllForCurrentDay();
@@ -1276,6 +1557,16 @@ async function cloudSave(silent){
     });
     const j = await res.json();
     if(!j.ok) throw new Error(j.error || "บันทึกไม่สำเร็จ");
+
+    // ทะเบียนเชื้อเก็บรวมไว้ที่เดียว ไม่ผูกกับวัน จึงส่งเป็นอีกระเบียนหนึ่ง
+    const res2 = await fetch(CLOUD_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ pw: AUTH_PW, kind: "ic", date: "registry", data: { cases: icAll() } })
+    });
+    const j2 = await res2.json();
+    if(!j2.ok) throw new Error(j2.error || "บันทึกทะเบียนเชื้อไม่สำเร็จ");
+
     setSync(`บันทึกวันที่ ${j.saved} แล้ว — ${j.at}`, "ok");
   }catch(err){
     setSync("บันทึกไม่สำเร็จ: " + (err.message || err), "bad");
@@ -2246,6 +2537,156 @@ function exportRM(){
   }
 }
 document.getElementById("btn-export-rm").addEventListener("click", exportRM);
+
+/* ---------------- Export รายงานเชื้อดื้อยา IC ---------------- */
+let icExportMode = "month";
+document.querySelectorAll(".ic-mode-btn").forEach(b=>{
+  b.addEventListener("click", ()=>{
+    document.querySelectorAll(".ic-mode-btn").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");
+    icExportMode = b.dataset.icmode;
+    document.getElementById("ic-month-row").style.display = icExportMode==="month" ? "flex" : "none";
+    document.getElementById("ic-year-row").style.display  = icExportMode==="year"  ? "flex" : "none";
+  });
+});
+(function initIcExport(){
+  document.getElementById("ic-month").value = new Date().toISOString().slice(0,7);
+  const sel = document.getElementById("ic-year");
+  const now = new Date();
+  const curBE = now.getFullYear() + 543 + (now.getMonth() + 1 >= 10 ? 1 : 0);
+  for(let y = curBE + 1; y >= curBE - 3; y--){
+    const o = document.createElement("option");
+    o.value = y; o.textContent = `พ.ศ. ${y}  (ต.ค. ${y-1} – ก.ย. ${y})`;
+    if(y === curBE) o.selected = true;
+    sel.appendChild(o);
+  }
+})();
+
+function icOrganismName(x){
+  return (x.organism === "อื่นๆ" && x.organismOther) ? x.organismOther : (x.organism || "");
+}
+// เคสที่ "ผลเพาะเชื้อ" ตกอยู่ในเดือนที่กำหนด
+function icCasesOfMonth(yCE, m){
+  return icAll().filter(x=>{
+    const d = x.foundDate || x.createdDate;
+    if(!d) return false;
+    const [yy,mm] = d.split("-").map(Number);
+    return yy === yCE && mm === m;
+  }).sort((a,b)=>(a.foundDate||"").localeCompare(b.foundDate||""));
+}
+
+function buildIcSheet(title, cases){
+  const aoa = [[title],[]];
+  aoa.push(["วันที่ผลเพาะเชื้อ","เตียง","HN","ชื่อ","เชื้อ","สิ่งส่งตรวจ",
+            "วันที่ส่ง lab","รับจาก","Diagnosis","สถานะส่ง IC","หมายเหตุ"]);
+  const headRow = aoa.length - 1;
+  cases.forEach(x=>{
+    const p = regFind(x.hn);
+    aoa.push([ thaiShort(x.foundDate||x.createdDate), x.bed||"", x.hn||"",
+               x.name || (p && p.name) || "", icOrganismName(x), x.specimen||"",
+               x.labDate ? thaiShort(x.labDate) : "",
+               (p && p.admitFrom) || "", (p && p.diagnosis) || "",
+               x.sendStatus||"", x.note||"" ]);
+  });
+  if(!cases.length) aoa.push(["","","","ไม่มีรายการเชื้อดื้อยา"]);
+
+  // ---- สรุป B ต่อท้าย ----
+  aoa.push([]); aoa.push([]);
+  const sumTitleRow = aoa.length;
+  aoa.push(["สรุปเชื้อประจำเดือน"]);
+  const sumHeadRow = aoa.length;
+  aoa.push(["เชื้อ","จำนวนราย"].concat(IC_SPECIMENS));
+  const sumStart = aoa.length;
+
+  const byOrg = {};
+  cases.forEach(x=>{
+    const o = icOrganismName(x) || "(ไม่ระบุ)";
+    if(!byOrg[o]) byOrg[o] = { n:0, spec:{} };
+    byOrg[o].n++;
+    if(x.specimen) byOrg[o].spec[x.specimen] = (byOrg[o].spec[x.specimen]||0) + 1;
+  });
+  const orgNames = Object.keys(byOrg).sort();
+  orgNames.forEach(o=>{
+    aoa.push([o, byOrg[o].n].concat(IC_SPECIMENS.map(s=> byOrg[o].spec[s] || "")));
+  });
+  const totals = IC_SPECIMENS.map(s=> cases.filter(x=>x.specimen===s).length || "");
+  aoa.push(["รวม", cases.length].concat(totals));
+  const sumEnd = aoa.length - 1;
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const LAST = 10;
+  ws["!cols"] = [{wch:16},{wch:7},{wch:11},{wch:22},{wch:17},{wch:11},
+                 {wch:13},{wch:14},{wch:22},{wch:13},{wch:24}];
+  ws["!merges"] = [{s:{r:0,c:0}, e:{r:0,c:LAST}},
+                   {s:{r:sumTitleRow,c:0}, e:{r:sumTitleRow,c:LAST}}];
+  styleCell(ws,"A1",{font:{bold:true,sz:13,color:{rgb:"0D3B8C"}},alignment:{horizontal:"center"}});
+  for(let col=0; col<=LAST; col++){
+    styleCell(ws, XLSX.utils.encode_cell({r:headRow,c:col}),
+      {font:{bold:true,color:{rgb:"0D3B8C"}},fill:{fgColor:{rgb:"E8F0FD"}},alignment:{horizontal:"center",wrapText:true}});
+  }
+  for(let r=headRow+1; r<headRow+1+Math.max(cases.length,1); r++){
+    for(let col=0; col<=LAST; col++){
+      styleCell(ws, XLSX.utils.encode_cell({r,c:col}),
+        {alignment:{horizontal:(col===3||col===8||col===10)?"left":"center",wrapText:true}});
+    }
+  }
+  styleCell(ws, XLSX.utils.encode_cell({r:sumTitleRow,c:0}),
+    {font:{bold:true,sz:12,color:{rgb:"082A66"}},fill:{fgColor:{rgb:"DDE6F7"}}});
+  for(let col=0; col<=1+IC_SPECIMENS.length; col++){
+    styleCell(ws, XLSX.utils.encode_cell({r:sumHeadRow,c:col}),
+      {font:{bold:true,color:{rgb:"0D3B8C"}},fill:{fgColor:{rgb:"E8F0FD"}},alignment:{horizontal:"center"}});
+  }
+  for(let r=sumStart; r<=sumEnd; r++){
+    const isTotal = (r === sumEnd);
+    for(let col=0; col<=1+IC_SPECIMENS.length; col++){
+      styleCell(ws, XLSX.utils.encode_cell({r,c:col}),
+        Object.assign({alignment:{horizontal:col===0?"left":"center"}},
+          isTotal ? {font:{bold:true},fill:{fgColor:{rgb:"FFF4E0"}}} : {}));
+    }
+  }
+  return ws;
+}
+
+async function exportIC(){
+  const btn = document.getElementById("btn-export-ic");
+  const lab = btn.querySelector("span:last-child");
+  const orig = lab.innerHTML;
+  lab.innerHTML = "⏳ กำลังสร้างไฟล์...";
+  btn.disabled = true;
+  try{
+    await loadRegistry();                       // ให้ชื่อ/รับจาก/Dx ครบก่อนเขียนไฟล์
+    const wb = XLSX.utils.book_new();
+    if(icExportMode === "month"){
+      const v = document.getElementById("ic-month").value;
+      if(!v){ showPopup("กรุณาเลือกเดือนก่อน Export"); return; }
+      const [y,m] = v.split("-").map(Number);
+      XLSX.utils.book_append_sheet(wb,
+        buildIcSheet(`รายงานเชื้อดื้อยา IC — ${THAI_MONTHS_FULL[m]} ${y+543}`, icCasesOfMonth(y,m)),
+        `${THAI_MONTHS[m]}${String(y+543).slice(-2)}`);
+      XLSX.writeFile(wb, `IC_${v}.xlsx`);
+    } else {
+      const yearBE = parseInt(document.getElementById("ic-year").value);
+      let all = [];
+      RM_MONTHS.forEach(mo=>{
+        const yCE = (mo.back ? yearBE - 1 : yearBE) - 543;
+        const cs = icCasesOfMonth(yCE, mo.m);
+        all = all.concat(cs);
+        const yShown = mo.back ? yearBE - 1 : yearBE;
+        XLSX.utils.book_append_sheet(wb,
+          buildIcSheet(`รายงานเชื้อดื้อยา IC — ${mo.name} ${yShown}`, cs), mo.sheet);
+      });
+      XLSX.utils.book_append_sheet(wb,
+        buildIcSheet(`รายงานเชื้อดื้อยา IC — รวมทั้งปีงบ ${yearBE}`, all), "รวมปี");
+      XLSX.writeFile(wb, `IC_${yearBE}.xlsx`);
+    }
+  }catch(err){
+    showPopup("สร้างไฟล์ IC ไม่สำเร็จ\n" + (err.message || err));
+  }finally{
+    lab.innerHTML = orig;
+    btn.disabled = false;
+  }
+}
+document.getElementById("btn-export-ic").addEventListener("click", exportIC);
 
 document.getElementById("btn-export-hattakan").addEventListener("click", ()=>{
   exportMode === "month" ? exportHattakanMonths() : exportHattakanDay();
