@@ -101,21 +101,22 @@
   #sync-status.ok{color:#14653a;} #sync-status.bad{color:#b9432f;} #sync-status.busy{color:#8a6d1f;}
 
   .prev-overlay{position:fixed;inset:0;z-index:998;background:rgba(0,0,0,.55);
-                display:flex;align-items:center;justify-content:center;padding:10px;}
-  .prev-box{background:#fff;border-radius:12px;width:100%;max-width:800px;max-height:92vh;
+                display:flex;align-items:center;justify-content:center;padding:6px;}
+  .prev-box{background:#fff;border-radius:12px;width:100%;max-width:1200px;
+            height:calc(100vh - 12px);height:calc(100dvh - 12px);
             display:flex;flex-direction:column;overflow:hidden;}
-  .prev-head{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--navy);color:#fff;}
+  .prev-head{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--navy);color:#fff;}
   .prev-head span{flex:1;font-weight:700;font-size:.86rem;}
   .prev-head button{background:rgba(255,255,255,.3);border:none;color:#fff;font-size:.9rem;
                     width:32px;height:32px;border-radius:8px;cursor:pointer;}
-  .prev-body{flex:1;overflow:auto;padding:12px;background:#f4f6fa;}
+  .prev-body{flex:1;min-height:0;overflow:auto;padding:6px;background:#f4f6fa;}
   /* แสดงขนาดเท่าไฟล์ PDF จริง (กว้าง 780px) เพื่อให้แคปจอแล้วได้เหมือนกัน */
   .prev-fit{margin:0 auto;overflow:hidden;}
   .prev-head button.prev-zoom{width:auto;padding:0 10px;font-size:.72rem;font-weight:700;}
   .prev-sheet{width:780px;padding:20px;background:#fff;margin:0 auto;}
-  .prev-foot{padding:10px 12px;border-top:1px solid var(--line);}
+  .prev-foot{padding:6px 10px;border-top:1px solid var(--line);}
   .prev-foot button{width:100%;background:var(--ok);color:#fff;border:none;border-radius:8px;
-                    padding:11px;font-size:.85rem;font-weight:700;cursor:pointer;}
+                    padding:9px;font-size:.85rem;font-weight:700;cursor:pointer;}
   .prev-foot button:disabled{opacity:.6;}
   .report-title{font-weight:700;font-size:1rem;margin:0 0 4px;text-align:center;}
 
@@ -1790,15 +1791,17 @@ function fitPreviewSheet(){
   const sheet = body.querySelector(".prev-sheet");
   if(!sheet) return;
   const natural = sheet.dataset.w ? parseInt(sheet.dataset.w) : sheet.offsetWidth;
-  const avail = body.clientWidth - 24;                 // เว้นขอบซ้ายขวา
-  if(avail <= 0) return;                               // พรีวิวปิดอยู่ ไม่ต้องคำนวณ
-  const k = prevFit ? Math.max(0.2, Math.min(1, avail / natural)) : 1;
+  const availW = body.clientWidth  - 12;               // เว้นขอบซ้ายขวา
+  const availH = body.clientHeight - 12;               // เว้นขอบบนล่าง
+  if(availW <= 0 || availH <= 0) return;               // พรีวิวปิดอยู่ ไม่ต้องคำนวณ
+  const naturalH = sheet.offsetHeight;                 // ความสูงจริง (ไม่ถูกกระทบจาก transform)
+  const k = prevFit ? Math.max(0.12, Math.min(1, availW / natural, availH / naturalH)) : 1;
   sheet.style.transform = `scale(${k})`;
   sheet.style.transformOrigin = "top left";
   // transform ไม่ลดพื้นที่ที่ใช้จริง จึงต้องกำหนดขนาดกล่องห่อให้ตรงกับที่ย่อแล้ว
   const wrap = sheet.parentElement;
   wrap.style.width  = (natural * k) + "px";
-  wrap.style.height = (sheet.offsetHeight * k) + "px";
+  wrap.style.height = (naturalH * k) + "px";
 }
 window.addEventListener("resize", fitPreviewSheet);
 
