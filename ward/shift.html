@@ -109,10 +109,8 @@
   .prev-head button{background:rgba(255,255,255,.3);border:none;color:#fff;font-size:.9rem;
                     width:32px;height:32px;border-radius:8px;cursor:pointer;}
   .prev-body{flex:1;overflow:auto;padding:12px;background:#f4f6fa;}
-  .prev-body .report-title{font-size:.9rem;}
-  .prev-body .report-sub{font-size:.74rem;}
-  .prev-body table.report-table{font-size:.64rem;background:#fff;}
-  .prev-body table.report-table th,.prev-body table.report-table td{padding:3px 5px;}
+  /* แสดงขนาดเท่าไฟล์ PDF จริง (กว้าง 780px) เพื่อให้แคปจอแล้วได้เหมือนกัน */
+  .prev-sheet{width:780px;padding:20px;background:#fff;margin:0 auto;}
   .prev-foot{padding:10px 12px;border-top:1px solid var(--line);}
   .prev-foot button{width:100%;background:var(--ok);color:#fff;border:none;border-radius:8px;
                     padding:11px;font-size:.85rem;font-weight:700;cursor:pointer;}
@@ -943,8 +941,11 @@ function setIncidents(sh, arr){
 const GENERAL_OPTIONS = ["เหตุการณ์ทั่วไปปกติ","พบอุบัติการณ์ดังนี้"];
 const ETHICS_OPTIONS = ["ไม่พบความเสี่ยงด้านจริยธรรม","พบความเสี่ยงด้านจริยธรรม"];
 const GERM_OPTIONS = ["ไม่พบเชื้อดื้อยา","พบเชื้อดื้อยา"];
-const IC_ORGANISMS = ["MRSA","CRE","VRE","MDR-AB","ESBL","Pseudomonas MDR","C. difficile","อื่นๆ"];
-const IC_SPECIMENS = ["Sputum","UC","แผล","H/C","C-line","DLC"];
+const IC_ORGANISMS = ["MRSA","CRE","VRE","MDR GNB","XDR","ESBL","Pseudomonas MDR","C. difficile","อื่นๆ"];
+const IC_SPECIMENS = ["Urine","H/C","Sputum","แผล","อื่นๆ"];
+// สิ่งส่งตรวจที่ต้องระบุรายละเอียดต่อ
+const IC_SPEC_SITES = { "H/C": ["DLC","C-line","Peripheral","อื่นๆ"] };
+const IC_SPEC_NEED_TEXT = ["แผล","อื่นๆ"];     // ต้องพิมพ์ตำแหน่ง/ระบุเอง
 const IC_SEND_STATUS = ["รอพิจารณา","ส่ง IC แล้ว","ไม่ส่ง"];
 const IC_CLOSE_REASONS = ["เพาะเชื้อไม่ขึ้นแล้ว","จำหน่าย/ย้ายออก","อื่นๆ"];
 let icFormOpen = { "ดึก":false, "เช้า":false, "บ่าย":false };
@@ -1076,6 +1077,14 @@ function renderIcNew(sh, locked){
       </div>
       ${d.organism === "อื่นๆ" ? `<label>ระบุชื่อเชื้อ</label>
         <input ${dis} type="text" class="icd-f" data-sh="${sh}" data-k="organismOther" value="${d.organismOther||""}">` : ""}
+      ${IC_SPEC_SITES[d.specimen] ? `<label>ตำแหน่ง ${d.specimen}</label>
+        <select ${dis} class="icd-f" data-sh="${sh}" data-k="specSite">
+          <option value="">-- เลือก --</option>
+          ${IC_SPEC_SITES[d.specimen].map(o=>`<option ${o===d.specSite?"selected":""}>${o}</option>`).join("")}
+        </select>` : ""}
+      ${(IC_SPEC_NEED_TEXT.includes(d.specimen) || (IC_SPEC_SITES[d.specimen] && d.specSite === "อื่นๆ"))
+        ? `<label>ระบุตำแหน่ง/รายละเอียด</label>
+           <input ${dis} type="text" class="icd-f" data-sh="${sh}" data-k="specDetail" value="${d.specDetail||""}">` : ""}
       <div class="event-row2">
         <div><label>วันที่ส่ง lab</label>
           <input ${dis} type="date" class="icd-f" data-sh="${sh}" data-k="labDate" value="${d.labDate || currentDateKey}"></div>
@@ -1097,6 +1106,10 @@ function renderIcNew(sh, locked){
 function icDraftMissing(sh){
   const d = icDraft[sh] || {};
   const need = [["hn","HN"],["bed","เตียง"],["organism","เชื้อ"],["specimen","สิ่งส่งตรวจ"],["foundDate","วันที่ผลเพาะเชื้อ"]];
+  if(d.organism === "อื่นๆ") need.push(["organismOther","ชื่อเชื้อ"]);
+  if(IC_SPEC_SITES[d.specimen]) need.push(["specSite",`ตำแหน่ง ${d.specimen}`]);
+  if(IC_SPEC_NEED_TEXT.includes(d.specimen) || (IC_SPEC_SITES[d.specimen] && d.specSite === "อื่นๆ"))
+    need.push(["specDetail","ระบุตำแหน่ง/รายละเอียด"]);
   return need.filter(([k])=> !String(d[k]||"").trim()).map(([,label])=>label);
 }
 
@@ -1139,6 +1152,7 @@ document.getElementById("daily-table-wrap").addEventListener("click", (e)=>{
                 hn:d.hn, bed:d.bed, name:(p && p.name) || d.name || "",
                 admitFrom:(p && p.admitFrom) || "", diagnosis:(p && p.diagnosis) || "",
                 organism:d.organism, organismOther:d.organismOther||"", specimen:d.specimen,
+                specSite:d.specSite||"", specDetail:d.specDetail||"",
                 labDate:d.labDate||currentDateKey, foundDate:d.foundDate,
                 sendStatus:d.sendStatus||IC_SEND_STATUS[0], note:d.note||"", closed:false });
     icSave(list);
@@ -1183,7 +1197,7 @@ document.getElementById("daily-table-wrap").addEventListener("change", (e)=>{
   const sh = t.dataset.sh;
   icDraft[sh] = icDraft[sh] || {};
   icDraft[sh][t.dataset.k] = t.value;
-  if(t.dataset.k === "organism") renderEventsRow();   // โชว์ช่อง "ระบุชื่อเชื้อ"
+  if(["organism","specimen","specSite"].includes(t.dataset.k)) renderEventsRow();  // โชว์ช่องที่ต้องระบุเพิ่ม
 });
 
 // ติ๊กรายการติดตาม = บันทึกทันที
@@ -1700,7 +1714,8 @@ function germText(sh, D){
     const x = all.find(c=>c.id === id);
     if(!x) return null;
     const org = icOrganismName(x);
-    return `เตียง ${x.bed||"-"} ${x.name||""} — ${org}${x.specimen?` (${x.specimen})`:""}`.trim();
+    const spec = icSpecimenName(x);
+    return `เตียง ${x.bed||"-"} ${x.name||""} — ${org}${spec?` / ${spec}`:""}`.trim();
   }).filter(Boolean);
   return lines.length ? `${s}\n${lines.map((l,i)=>`${i+1}) ${l}`).join("\n")}` : `${s} (-)`;
 }
@@ -1769,7 +1784,8 @@ document.getElementById("btn-view-daily").addEventListener("click", ()=>{
   saveStore();
   document.getElementById("prev-title").textContent =
     "ตัวอย่าง — บันทึกประจำวัน " + currentDateKey;
-  document.getElementById("prev-body").innerHTML = buildDailyReportHtml(currentDateKey);
+  document.getElementById("prev-body").innerHTML =
+    `<div class="prev-sheet">${buildDailyReportHtml(currentDateKey)}</div>`;
   document.getElementById("prev-overlay").style.display = "flex";
 });
 document.getElementById("prev-close").addEventListener("click", ()=>{
@@ -2635,6 +2651,11 @@ document.querySelectorAll(".ic-mode-btn").forEach(b=>{
   }
 })();
 
+function icSpecimenName(x){
+  if(!x.specimen) return "";
+  const extra = [x.specSite, x.specDetail].filter(v=>v && String(v).trim() && v !== "อื่นๆ").join(" ");
+  return extra ? `${x.specimen} (${extra})` : x.specimen;
+}
 function icOrganismName(x){
   return (x.organism === "อื่นๆ" && x.organismOther) ? x.organismOther : (x.organism || "");
 }
@@ -2656,7 +2677,7 @@ function buildIcSheet(title, cases){
   cases.forEach(x=>{
     const p = regFind(x.hn);
     aoa.push([ thaiShort(x.foundDate||x.createdDate), x.bed||"", x.hn||"",
-               x.name || (p && p.name) || "", icOrganismName(x), x.specimen||"",
+               x.name || (p && p.name) || "", icOrganismName(x), icSpecimenName(x),
                x.labDate ? thaiShort(x.labDate) : "",
                x.admitFrom || (p && p.admitFrom) || "", x.diagnosis || (p && p.diagnosis) || "",
                x.sendStatus||"", x.note||"" ]);

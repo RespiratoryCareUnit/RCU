@@ -153,7 +153,8 @@
   .prev-head button{background:rgba(255,255,255,.3);border:none;color:#fff;font-size:.9rem;
                     width:32px;height:32px;border-radius:8px;cursor:pointer;}
   .prev-body{flex:1;overflow:auto;padding:12px;background:#f4f6fa;}
-  .prev-body table{background:#fff;font-size:.62rem;}
+  /* แสดงขนาดเท่าไฟล์ PDF จริง (แนวนอน กว้าง 1100px) */
+  .prev-sheet{width:1100px;padding:16px;background:#fff;margin:0 auto;}
   .prev-foot{padding:10px 12px;border-top:1px solid var(--line);}
   .prev-foot button{width:100%;background:var(--ok);color:#fff;border:none;border-radius:8px;
                     padding:11px;font-size:.85rem;font-weight:700;cursor:pointer;}
@@ -1052,7 +1053,7 @@ document.getElementById("btn-print-work").addEventListener("click", ()=>{
   buildWorkReportHtml(currentWorkDay);
   document.getElementById("prev-title").textContent = `ตัวอย่าง — มอบหมายงาน วันที่ ${currentWorkDay}`;
   document.getElementById("prev-body").innerHTML =
-    document.getElementById("work-print-report").innerHTML;
+    `<div class="prev-sheet">${document.getElementById("work-print-report").innerHTML}</div>`;
   document.getElementById("prev-overlay").style.display = "flex";
 });
 document.getElementById("prev-close").addEventListener("click", ()=>{
