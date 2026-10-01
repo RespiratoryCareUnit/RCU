@@ -100,12 +100,29 @@
   #sync-status{font-size:.7rem;color:#5a6a86;}
   #sync-status.ok{color:#14653a;} #sync-status.bad{color:#b9432f;} #sync-status.busy{color:#8a6d1f;}
 
+  .prev-overlay{position:fixed;inset:0;z-index:998;background:rgba(0,0,0,.55);
+                display:flex;align-items:center;justify-content:center;padding:10px;}
+  .prev-box{background:#fff;border-radius:12px;width:100%;max-width:800px;max-height:92vh;
+            display:flex;flex-direction:column;overflow:hidden;}
+  .prev-head{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--navy);color:#fff;}
+  .prev-head span{flex:1;font-weight:700;font-size:.86rem;}
+  .prev-head button{background:rgba(255,255,255,.3);border:none;color:#fff;font-size:.9rem;
+                    width:32px;height:32px;border-radius:8px;cursor:pointer;}
+  .prev-body{flex:1;overflow:auto;padding:12px;background:#f4f6fa;}
+  .prev-body .report-title{font-size:.9rem;}
+  .prev-body .report-sub{font-size:.74rem;}
+  .prev-body table.report-table{font-size:.64rem;background:#fff;}
+  .prev-body table.report-table th,.prev-body table.report-table td{padding:3px 5px;}
+  .prev-foot{padding:10px 12px;border-top:1px solid var(--line);}
+  .prev-foot button{width:100%;background:var(--ok);color:#fff;border:none;border-radius:8px;
+                    padding:11px;font-size:.85rem;font-weight:700;cursor:pointer;}
+  .prev-foot button:disabled{opacity:.6;}
   .report-title{font-weight:700;font-size:1rem;margin:0 0 4px;text-align:center;}
 
   .view-btn{display:block;width:calc(100% - 8px);background:var(--navy);color:#fff;border:none;border-radius:8px;padding:9px;font-size:.8rem;font-weight:700;margin:0 4px 12px;cursor:pointer;}
   .report-sub{font-size:.86rem;margin:0 0 14px;text-align:center;color:#555;}
   table.report-table{width:100%;border-collapse:collapse;font-size:.8rem;}
-  table.report-table th, table.report-table td{border:1px solid #999;padding:5px 7px;text-align:left;}
+  table.report-table th, table.report-table td{border:1px solid #999;padding:5px 7px;text-align:left;white-space:pre-line;}
   table.report-table th{background:#eef1f8;color:var(--navy-deep);text-align:center;}
   table.report-table td.rlabel{font-weight:600;background:#fbfbfd;width:32%;}
   table.report-table td.rshift{text-align:center;}
@@ -184,6 +201,15 @@
   .ic-card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px;}
   .ic-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
   .ic-head span{font-size:.74rem;font-weight:700;color:var(--navy-deep);}
+  .ic-saved{color:#14653a;font-size:.64rem;font-weight:700;margin-left:6px;white-space:nowrap;}
+  .ic-draft{border:1.5px solid var(--navy);}
+  .ic-cancel{background:#fff;border:1px solid var(--line);color:#777;border-radius:6px;
+             padding:3px 9px;font-size:.64rem;cursor:pointer;}
+  .ic-need{background:#fdecea;border:1px solid #efa9a9;color:#8c2020;border-radius:6px;
+           padding:5px 8px;font-size:.66rem;margin-top:7px;}
+  .ic-add-row{display:flex;justify-content:flex-end;margin-top:8px;}
+  .ic-commit{background:#7fc79a;color:#fff;border:none;border-radius:5px;
+             padding:3px 10px;font-size:.64rem;font-weight:700;cursor:pointer;}
   .ic-del{background:#fff;border:1.5px solid var(--danger);color:var(--danger);border-radius:6px;
           padding:3px 9px;font-size:.66rem;font-weight:700;cursor:pointer;}
   .ic-card label{display:block;font-size:.66rem;color:#666;margin:6px 0 2px;}
@@ -360,6 +386,19 @@
   <div class="popup-box">
     <p id="popup-message"></p>
     <button type="button" class="popup-ok-btn" id="popup-ok">ตกลง</button>
+  </div>
+</div>
+
+<div class="prev-overlay" id="prev-overlay" style="display:none;">
+  <div class="prev-box">
+    <div class="prev-head">
+      <span id="prev-title">ตัวอย่างก่อนพิมพ์</span>
+      <button type="button" id="prev-close">✕</button>
+    </div>
+    <div class="prev-body" id="prev-body"></div>
+    <div class="prev-foot">
+      <button type="button" id="prev-download">📥 ดาวน์โหลด PDF</button>
+    </div>
   </div>
 </div>
 
@@ -903,11 +942,13 @@ function setIncidents(sh, arr){
 
 const GENERAL_OPTIONS = ["เหตุการณ์ทั่วไปปกติ","พบอุบัติการณ์ดังนี้"];
 const ETHICS_OPTIONS = ["ไม่พบความเสี่ยงด้านจริยธรรม","พบความเสี่ยงด้านจริยธรรม"];
-const GERM_OPTIONS = ["ไม่พบเชื้อดื้อยารายใหม่","พบเชื้อดื้อยา","พบเชื้อดื้อยารายใหม่"];
+const GERM_OPTIONS = ["ไม่พบเชื้อดื้อยา","พบเชื้อดื้อยา"];
 const IC_ORGANISMS = ["MRSA","CRE","VRE","MDR-AB","ESBL","Pseudomonas MDR","C. difficile","อื่นๆ"];
 const IC_SPECIMENS = ["Sputum","UC","แผล","H/C","C-line","DLC"];
 const IC_SEND_STATUS = ["รอพิจารณา","ส่ง IC แล้ว","ไม่ส่ง"];
 const IC_CLOSE_REASONS = ["เพาะเชื้อไม่ขึ้นแล้ว","จำหน่าย/ย้ายออก","อื่นๆ"];
+let icFormOpen = { "ดึก":false, "เช้า":false, "บ่าย":false };
+let icDraft = {};
 const IC_FOLLOW_DAYS = 30;   // ย้อนหลังที่ดึงมาแสดง
 const IC_WARN_DAYS  = 14;    // เตือนเมื่อเคสเปิดนานเกินนี้
 
@@ -984,7 +1025,7 @@ function renderIcFollow(sh, locked){
       html += `<label class="ic-follow">
         <input type="checkbox" ${dis} ${on?"checked":""} class="ic-tick" data-sh="${sh}" data-id="${x.id}">
         <span class="ic-follow-main">
-          <b>เตียง ${x.bed||"-"} · ${x.name||"(ไม่ทราบชื่อ)"}</b>
+          <b>เตียง ${x.bed||"-"} · ${x.name||"(ไม่ทราบชื่อ)"}</b>${on?`<span class="ic-saved">✓ บันทึกแล้ว</span>`:""}
           <span class="ic-sub">${x.organism||"-"}${x.hn?` · HN ${x.hn}`:""} · ลงเมื่อ ${thaiShort(x.foundDate||x.createdDate)} (${age} วัน)</span>
           ${age >= IC_WARN_DAYS ? `<span class="ic-warn">⚠ ติดตามมา ${age} วันแล้ว — ยังพบเชื้ออยู่ไหม?</span>` : ""}
         </span>
@@ -992,7 +1033,10 @@ function renderIcFollow(sh, locked){
       </label>`;
     });
   }
-  if(!locked) html += `<button type="button" class="ic-add-follow" data-sh="${sh}">+ เพิ่มเอง (ไม่อยู่ในรายการ)</button>`;
+  if(!locked){
+    html += `<button type="button" class="ic-add-new" data-sh="${sh}">+ เพิ่มรายใหม่</button>`;
+    if(icFormOpen[sh]) html += renderIcNew(sh, locked);
+  }
   html += `</div>`;
   return html;
 }
@@ -1005,60 +1049,62 @@ function thaiShort(iso){
 
 // ฟอร์มลงรายใหม่
 function renderIcNew(sh, locked){
+  const d = icDraft[sh] || (icDraft[sh] = {});
   const dis = locked ? "disabled" : "";
-  const list = icAll().filter(x => x.shift === sh && x.createdDate === currentDateKey);
-  let html = `<div class="ic-wrap">`;
-  list.forEach(x=>{
-    html += `<div class="ic-card">
-      <div class="ic-head">
-        <span>เชื้อดื้อยารายใหม่</span>
-        ${locked?"":`<button type="button" class="ic-del" data-id="${x.id}">ลบ</button>`}
-      </div>
+  const miss = icDraftMissing(sh);
+  return `<div class="ic-card ic-draft">
+      <div class="ic-head"><span>เพิ่มเชื้อดื้อยารายใหม่</span>
+        <button type="button" class="ic-cancel" data-sh="${sh}">ยกเลิก</button></div>
       <div class="event-row2">
         <div><label>HN</label>
-          <input ${dis} type="text" class="ic-f" data-id="${x.id}" data-k="hn" value="${x.hn||""}" placeholder="พิมพ์ HN"></div>
+          <input ${dis} type="text" class="icd-f" data-sh="${sh}" data-k="hn" value="${d.hn||""}" placeholder="พิมพ์ HN"></div>
         <div><label>เตียง</label>
-          <input ${dis} type="text" class="ic-f" data-id="${x.id}" data-k="bed" value="${x.bed||""}"></div>
+          <input ${dis} type="text" class="icd-f" data-sh="${sh}" data-k="bed" value="${d.bed||""}"></div>
       </div>
-      <div class="ic-patient" data-for="${x.id}">${icPatientLine(x)}</div>
+      <div class="ic-patient" id="ic-pt-${sh}">${icPatientLine(d, sh)}</div>
       <div class="event-row2">
         <div><label>เชื้อ</label>
-          <select ${dis} class="ic-f" data-id="${x.id}" data-k="organism">
+          <select ${dis} class="icd-f" data-sh="${sh}" data-k="organism">
             <option value="">-- เลือก --</option>
-            ${IC_ORGANISMS.map(o=>`<option ${o===x.organism?"selected":""}>${o}</option>`).join("")}
+            ${IC_ORGANISMS.map(o=>`<option ${o===d.organism?"selected":""}>${o}</option>`).join("")}
           </select></div>
         <div><label>สิ่งส่งตรวจ</label>
-          <select ${dis} class="ic-f" data-id="${x.id}" data-k="specimen">
+          <select ${dis} class="icd-f" data-sh="${sh}" data-k="specimen">
             <option value="">-- เลือก --</option>
-            ${IC_SPECIMENS.map(o=>`<option ${o===x.specimen?"selected":""}>${o}</option>`).join("")}
+            ${IC_SPECIMENS.map(o=>`<option ${o===d.specimen?"selected":""}>${o}</option>`).join("")}
           </select></div>
       </div>
-      ${x.organism === "อื่นๆ" ? `<label>ระบุชื่อเชื้อ</label>
-        <input ${dis} type="text" class="ic-f" data-id="${x.id}" data-k="organismOther" value="${x.organismOther||""}">` : ""}
+      ${d.organism === "อื่นๆ" ? `<label>ระบุชื่อเชื้อ</label>
+        <input ${dis} type="text" class="icd-f" data-sh="${sh}" data-k="organismOther" value="${d.organismOther||""}">` : ""}
       <div class="event-row2">
         <div><label>วันที่ส่ง lab</label>
-          <input ${dis} type="date" class="ic-f" data-id="${x.id}" data-k="labDate" value="${x.labDate||""}"></div>
+          <input ${dis} type="date" class="icd-f" data-sh="${sh}" data-k="labDate" value="${d.labDate || currentDateKey}"></div>
         <div><label>วันที่ผลเพาะเชื้อ</label>
-          <input ${dis} type="date" class="ic-f" data-id="${x.id}" data-k="foundDate" value="${x.foundDate||""}"></div>
+          <input ${dis} type="date" class="icd-f" data-sh="${sh}" data-k="foundDate" value="${d.foundDate||""}"></div>
       </div>
       <label>สถานะส่ง IC</label>
-      <select ${dis} class="ic-f" data-id="${x.id}" data-k="sendStatus">
-        ${IC_SEND_STATUS.map(o=>`<option ${o===x.sendStatus?"selected":""}>${o}</option>`).join("")}
+      <select ${dis} class="icd-f" data-sh="${sh}" data-k="sendStatus">
+        ${IC_SEND_STATUS.map(o=>`<option ${o===d.sendStatus?"selected":""}>${o}</option>`).join("")}
       </select>
       <label>หมายเหตุ</label>
-      <textarea ${dis} rows="2" class="ic-f" data-id="${x.id}" data-k="note">${x.note||""}</textarea>
+      <textarea ${dis} rows="2" class="icd-f" data-sh="${sh}" data-k="note">${d.note||""}</textarea>
+      ${miss.length ? `<div class="ic-need">ยังขาด: ${miss.join(" · ")}</div>` : ""}
+      <div class="ic-add-row"><button type="button" class="ic-commit" data-sh="${sh}">เพิ่ม</button></div>
     </div>`;
-  });
-  if(!locked) html += `<button type="button" class="ic-add-new" data-sh="${sh}">+ เพิ่มรายการเชื้อ</button>`;
-  html += `</div>`;
-  return html;
 }
 
-function icPatientLine(x){
+// ช่องบังคับของฟอร์มรายใหม่
+function icDraftMissing(sh){
+  const d = icDraft[sh] || {};
+  const need = [["hn","HN"],["bed","เตียง"],["organism","เชื้อ"],["specimen","สิ่งส่งตรวจ"],["foundDate","วันที่ผลเพาะเชื้อ"]];
+  return need.filter(([k])=> !String(d[k]||"").trim()).map(([,label])=>label);
+}
+
+function icPatientLine(x, sh){
   if(!x.hn) return `<span class="ic-hint">พิมพ์ HN เพื่อดึงข้อมูลผู้ป่วย</span>`;
   const p = regFind(x.hn);
   if(!p) return `<span class="ic-hint">ไม่พบ HN นี้ในระบบลงทะเบียน — กรอกชื่อเอง:
-    <input type="text" class="ic-f" data-id="${x.id}" data-k="name" value="${x.name||""}" placeholder="ชื่อ-นามสกุล"></span>`;
+    <input type="text" class="icd-f" data-sh="${sh}" data-k="name" value="${x.name||""}" placeholder="ชื่อ-นามสกุล"></span>`;
   return `<span class="ic-found"><b>${p.name||"-"}</b>${p.age?` · ${p.gender||""} ${p.age} ปี`:""}
     ${p.admitFrom?` · รับจาก ${p.admitFrom}`:""}${p.diagnosis?` · ${p.diagnosis}`:""}</span>`;
 }
@@ -1068,30 +1114,40 @@ function icNewId(){ return "ic" + Date.now() + Math.random().toString(36).slice(
 
 document.getElementById("daily-table-wrap").addEventListener("click", (e)=>{
   const addNew = e.target.closest(".ic-add-new");
-  const addFol = e.target.closest(".ic-add-follow");
-  const del    = e.target.closest(".ic-del");
+  const cancel = e.target.closest(".ic-cancel");
+  const commit = e.target.closest(".ic-commit");
   const close  = e.target.closest(".ic-close-btn");
 
   if(addNew){
+    const sh = addNew.dataset.sh;
+    icFormOpen[sh] = true;
+    icDraft[sh] = { labDate: currentDateKey, sendStatus: IC_SEND_STATUS[0] };
+    renderEventsRow();
+  } else if(cancel){
+    const sh = cancel.dataset.sh;
+    icFormOpen[sh] = false; icDraft[sh] = {};
+    renderEventsRow();
+  } else if(commit){
+    const sh = commit.dataset.sh;
+    const miss = icDraftMissing(sh);
+    if(miss.length){ showPopup("กรุณากรอกให้ครบก่อนเพิ่ม:\n- " + miss.join("\n- ")); return; }
+    const d = icDraft[sh];
+    const p = regFind(d.hn);
     const list = icAll();
-    list.push({ id:icNewId(), shift:addNew.dataset.sh, createdDate:currentDateKey,
-                hn:"", bed:"", name:"", organism:"", organismOther:"", specimen:"",
-                labDate:currentDateKey, foundDate:"", sendStatus:IC_SEND_STATUS[0],
-                note:"", closed:false });
-    icSave(list); renderEventsRow();
-  } else if(addFol){
-    // เพิ่มเองสำหรับรายที่ไม่ได้ลงทะเบียนไว้ — ถือเป็นเคสหนึ่งเหมือนกัน
-    const list = icAll();
-    list.push({ id:icNewId(), shift:addFol.dataset.sh, createdDate:currentDateKey,
-                hn:"", bed:"", name:"", organism:"", organismOther:"", specimen:"",
-                labDate:currentDateKey, foundDate:currentDateKey,
-                sendStatus:IC_SEND_STATUS[0], note:"", closed:false, manual:true });
+    const id = icNewId();
+    list.push({ id, shift:sh, createdDate:currentDateKey,
+                hn:d.hn, bed:d.bed, name:(p && p.name) || d.name || "",
+                admitFrom:(p && p.admitFrom) || "", diagnosis:(p && p.diagnosis) || "",
+                organism:d.organism, organismOther:d.organismOther||"", specimen:d.specimen,
+                labDate:d.labDate||currentDateKey, foundDate:d.foundDate,
+                sendStatus:d.sendStatus||IC_SEND_STATUS[0], note:d.note||"", closed:false });
     icSave(list);
-    setDeep(data.shifts[addFol.dataset.sh], "events.germStatus", GERM_OPTIONS[2]);
-    saveStore(); renderEventsRow();
-    showPopup("เพิ่มรายการใหม่แล้ว — กรอกข้อมูลในฟอร์ม \"พบเชื้อดื้อยารายใหม่\"");
-  } else if(del){
-    icSave(icAll().filter(x=>x.id !== del.dataset.id));
+    // เคสใหม่ถือว่าพบวันนี้ จึงติ๊กไว้ให้เลย
+    const ticked = getDeep(data.shifts[sh], "events.germFollow") || {};
+    ticked[id] = true;
+    setDeep(data.shifts[sh], "events.germFollow", ticked);
+    saveStore();
+    icFormOpen[sh] = false; icDraft[sh] = {};
     renderEventsRow();
   } else if(close){
     const id = close.dataset.id;
@@ -1108,40 +1164,38 @@ document.getElementById("daily-table-wrap").addEventListener("click", (e)=>{
   }
 });
 
+// ฟอร์มร่าง: เก็บค่าไว้ก่อน ยังไม่บันทึกจนกว่าจะกด "เพิ่ม"
 document.getElementById("daily-table-wrap").addEventListener("input", async (e)=>{
-  const t = e.target.closest(".ic-f");
+  const t = e.target.closest(".icd-f");
   if(!t || t.tagName === "SELECT") return;
-  const list = icAll();
-  const it = list.find(x=>x.id === t.dataset.id);
-  if(!it) return;
-  it[t.dataset.k] = t.value;
-  icSave(list);
+  const sh = t.dataset.sh;
+  icDraft[sh] = icDraft[sh] || {};
+  icDraft[sh][t.dataset.k] = t.value;
   if(t.dataset.k === "hn"){
     await loadRegistry();
-    const box = document.querySelector(`.ic-patient[data-for="${it.id}"]`);
-    if(box) box.innerHTML = icPatientLine(it);
-    const p = regFind(it.hn);
-    if(p){ it.name = p.name || ""; icSave(list); }   // เก็บชื่อติดไปกับเคส
+    const box = document.getElementById(`ic-pt-${sh}`);
+    if(box) box.innerHTML = icPatientLine(icDraft[sh], sh);
   }
 });
-
 document.getElementById("daily-table-wrap").addEventListener("change", (e)=>{
-  const sel  = e.target.closest("select.ic-f");
+  const t = e.target.closest(".icd-f");
+  if(!t || t.tagName !== "SELECT") return;
+  const sh = t.dataset.sh;
+  icDraft[sh] = icDraft[sh] || {};
+  icDraft[sh][t.dataset.k] = t.value;
+  if(t.dataset.k === "organism") renderEventsRow();   // โชว์ช่อง "ระบุชื่อเชื้อ"
+});
+
+// ติ๊กรายการติดตาม = บันทึกทันที
+document.getElementById("daily-table-wrap").addEventListener("change", (e)=>{
   const tick = e.target.closest(".ic-tick");
-  if(sel){
-    const list = icAll();
-    const it = list.find(x=>x.id === sel.dataset.id);
-    if(!it) return;
-    it[sel.dataset.k] = sel.value;
-    icSave(list);
-    if(sel.dataset.k === "organism") renderEventsRow();   // โชว์ช่อง "ระบุชื่อเชื้อ"
-  } else if(tick){
-    const sh = tick.dataset.sh;
-    const cur = getDeep(data.shifts[sh], "events.germFollow") || {};
-    cur[tick.dataset.id] = tick.checked;
-    setDeep(data.shifts[sh], "events.germFollow", cur);
-    saveStore();
-  }
+  if(!tick) return;
+  const sh = tick.dataset.sh;
+  const cur = getDeep(data.shifts[sh], "events.germFollow") || {};
+  cur[tick.dataset.id] = tick.checked;
+  setDeep(data.shifts[sh], "events.germFollow", cur);
+  saveStore();
+  renderEventsRow();           // อัปเดตป้าย "✓ บันทึกแล้ว"
 });
 
 /* ---------------- อุบัติการณ์ (RM) ---------------- */
@@ -1279,7 +1333,6 @@ function buildEventCardHtml(sh){
       <div class="event-field"><label>เชื้อดื้อยา</label>
         <select ${dis} data-shift="${sh}" data-f="events.germStatus" class="conditional-select">${buildSelectOptions(GERM_OPTIONS, germStatus)}</select>
         ${germStatus === GERM_OPTIONS[1] ? renderIcFollow(sh, submitted) : ""}
-        ${germStatus === GERM_OPTIONS[2] ? renderIcNew(sh, submitted) : ""}
       </div>
 
       <div class="event-row2">
@@ -1326,7 +1379,11 @@ function validateEventCard(sh){
   if(ethicsStatus === ETHICS_OPTIONS[1] && !g('events.ethicsDetail')) missing.push("รายละเอียดความเสี่ยงจริยธรรม");
 
   const germStatus = g('events.germStatus') || GERM_OPTIONS[0];
-  if(germStatus === GERM_OPTIONS[1] && (!g('events.germBeds1') || !g('events.germType1'))) missing.push("เตียง/เชื้อ (อย่างน้อย 1 คู่)");
+  if(germStatus === GERM_OPTIONS[1]){
+    const ticked = getDeep(data.shifts[sh], "events.germFollow") || {};
+    const anyTicked = Object.keys(ticked).some(id=>ticked[id]);
+    if(!anyTicked) missing.push("เชื้อดื้อยา: ติ๊กรายการที่พบ หรือเพิ่มรายใหม่");
+  }
 
   if(!g('incharge')) missing.push("Incharge");
 
@@ -1600,6 +1657,9 @@ document.addEventListener("visibilitychange", ()=>{
 // pull the shared data as soon as the page opens
 cloudLoad(true);
 
+// โหลดรายชื่อผู้ป่วยไว้ล่วงหน้า เพื่อให้กรองคนที่จำหน่ายแล้วออกได้ตั้งแต่ครั้งแรก
+loadRegistry().then(()=>{ if(typeof renderEventsRow === "function") renderEventsRow(); });
+
 /* ================= EXPORT FUNCTIONS ================= */
 
 /* ---- 1. แบบบันทึกเหตุการณ์_RCU ---- */
@@ -1633,11 +1693,16 @@ function ethicsText(sh, D){
 function germText(sh, D){
   const s = getDeep(D.shifts[sh],'events.germStatus') || GERM_OPTIONS[0];
   if(s === GERM_OPTIONS[0]) return s;
-  const pairs = [1,2,3].map(i=>{
-    const b = getDeep(D.shifts[sh],`events.germBeds${i}`), t = getDeep(D.shifts[sh],`events.germType${i}`);
-    return (b || t) ? `เตียง${b||"-"}: ${t||"-"}` : null;
-  }).filter(Boolean).join(", ");
-  return `${s} (${pairs || "-"})`;
+  // ไล่จากรายการที่ติ๊กไว้ในเวรนั้น แล้วดึงชื่อเชื้อจากทะเบียน
+  const ticked = getDeep(D.shifts[sh], "events.germFollow") || {};
+  const all = icAll();
+  const lines = Object.keys(ticked).filter(id=>ticked[id]).map(id=>{
+    const x = all.find(c=>c.id === id);
+    if(!x) return null;
+    const org = icOrganismName(x);
+    return `เตียง ${x.bed||"-"} ${x.name||""} — ${org}${x.specimen?` (${x.specimen})`:""}`.trim();
+  }).filter(Boolean);
+  return lines.length ? `${s}\n${lines.map((l,i)=>`${i+1}) ${l}`).join("\n")}` : `${s} (-)`;
 }
 
 // builds the printable report for ANY day; used by both the on-screen viewer and the PDF export
@@ -1699,20 +1764,28 @@ function buildDailyReportHtml(dateKey, dayRec){
 
 /* ---------------- on-screen viewer: same report, browse day by day ---------------- */
 // download the day's report as a PDF; the browser's download bar opens it
-document.getElementById("btn-view-daily").addEventListener("click", async ()=>{
-  const btn = document.getElementById("btn-view-daily");
-  const original = btn.textContent;
-  btn.textContent = "⏳ กำลังสร้าง PDF...";
-  btn.disabled = true;
+// แสดงตัวอย่างก่อน แล้วค่อยให้กดดาวน์โหลด
+document.getElementById("btn-view-daily").addEventListener("click", ()=>{
   saveStore();
+  document.getElementById("prev-title").textContent =
+    "ตัวอย่าง — บันทึกประจำวัน " + currentDateKey;
+  document.getElementById("prev-body").innerHTML = buildDailyReportHtml(currentDateKey);
+  document.getElementById("prev-overlay").style.display = "flex";
+});
+document.getElementById("prev-close").addEventListener("click", ()=>{
+  document.getElementById("prev-overlay").style.display = "none";
+});
+document.getElementById("prev-download").addEventListener("click", async ()=>{
+  const btn = document.getElementById("prev-download");
+  const orig = btn.textContent;
+  btn.textContent = "⏳ กำลังสร้าง PDF..."; btn.disabled = true;
   try{
     const pdf = await buildPdfDoc(currentDateKey);
     pdf.save(`บันทึกเหตุการณ์รายวัน_${currentDateKey}.pdf`);
   }catch(err){
     showPopup(`สร้าง PDF ไม่สำเร็จ:\n${err.message || err}`);
   }finally{
-    btn.textContent = original;
-    btn.disabled = false;
+    btn.textContent = orig; btn.disabled = false;
   }
 });
 
@@ -2585,7 +2658,7 @@ function buildIcSheet(title, cases){
     aoa.push([ thaiShort(x.foundDate||x.createdDate), x.bed||"", x.hn||"",
                x.name || (p && p.name) || "", icOrganismName(x), x.specimen||"",
                x.labDate ? thaiShort(x.labDate) : "",
-               (p && p.admitFrom) || "", (p && p.diagnosis) || "",
+               x.admitFrom || (p && p.admitFrom) || "", x.diagnosis || (p && p.diagnosis) || "",
                x.sendStatus||"", x.note||"" ]);
   });
   if(!cases.length) aoa.push(["","","","ไม่มีรายการเชื้อดื้อยา"]);

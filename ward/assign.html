@@ -144,6 +144,20 @@
   .print-btn{display:block;width:calc(100% - 8px);background:#fff;border:1.5px solid var(--navy);color:var(--navy-deep);border-radius:7px;padding:5px;font-size:.7rem;font-weight:700;margin:0 4px 10px;cursor:pointer;}
   .print-btn:active{background:var(--sky);}
 
+  .prev-overlay{position:fixed;inset:0;z-index:998;background:rgba(0,0,0,.55);
+                display:flex;align-items:center;justify-content:center;padding:10px;}
+  .prev-box{background:#fff;border-radius:12px;width:100%;max-width:900px;max-height:92vh;
+            display:flex;flex-direction:column;overflow:hidden;}
+  .prev-head{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--navy);color:#fff;}
+  .prev-head span{flex:1;font-weight:700;font-size:.86rem;}
+  .prev-head button{background:rgba(255,255,255,.3);border:none;color:#fff;font-size:.9rem;
+                    width:32px;height:32px;border-radius:8px;cursor:pointer;}
+  .prev-body{flex:1;overflow:auto;padding:12px;background:#f4f6fa;}
+  .prev-body table{background:#fff;font-size:.62rem;}
+  .prev-foot{padding:10px 12px;border-top:1px solid var(--line);}
+  .prev-foot button{width:100%;background:var(--ok);color:#fff;border:none;border-radius:8px;
+                    padding:11px;font-size:.85rem;font-weight:700;cursor:pointer;}
+  .prev-foot button:disabled{opacity:.6;}
   .print-report{ display:none; }
   .report-title{ font-weight:700; font-size:1rem; margin:0 0 10px; }
   .report-shift-title{ font-weight:700; font-size:.84rem; margin:12px 0 4px; }
@@ -253,6 +267,19 @@
   </div>
   <div id="work-days"></div>
   <div id="work-print-report" class="print-report"></div>
+
+<div class="prev-overlay" id="prev-overlay" style="display:none;">
+  <div class="prev-box">
+    <div class="prev-head">
+      <span id="prev-title">ตัวอย่างก่อนพิมพ์</span>
+      <button type="button" id="prev-close">✕</button>
+    </div>
+    <div class="prev-body" id="prev-body"></div>
+    <div class="prev-foot">
+      <button type="button" id="prev-download">📥 ดาวน์โหลด PDF</button>
+    </div>
+  </div>
+</div>
 </section>
 
 <section class="panel" id="summary">
@@ -1020,15 +1047,27 @@ document.getElementById("btn-print-assign").addEventListener("click", async (e)=
   btn.textContent = original;
   btn.disabled = false;
 });
-document.getElementById("btn-print-work").addEventListener("click", async (e)=>{
-  const btn = e.currentTarget;
-  const original = btn.textContent;
-  btn.textContent = "⏳ กำลังสร้าง PDF...";
-  btn.disabled = true;
+// แสดงตัวอย่างก่อน แล้วค่อยให้กดดาวน์โหลด
+document.getElementById("btn-print-work").addEventListener("click", ()=>{
   buildWorkReportHtml(currentWorkDay);
-  await exportReportAsPdf("work-print-report", "landscape", `มอบหมายงาน-วัน${currentWorkDay}.pdf`);
-  btn.textContent = original;
-  btn.disabled = false;
+  document.getElementById("prev-title").textContent = `ตัวอย่าง — มอบหมายงาน วันที่ ${currentWorkDay}`;
+  document.getElementById("prev-body").innerHTML =
+    document.getElementById("work-print-report").innerHTML;
+  document.getElementById("prev-overlay").style.display = "flex";
+});
+document.getElementById("prev-close").addEventListener("click", ()=>{
+  document.getElementById("prev-overlay").style.display = "none";
+});
+document.getElementById("prev-download").addEventListener("click", async ()=>{
+  const btn = document.getElementById("prev-download");
+  const orig = btn.textContent;
+  btn.textContent = "⏳ กำลังสร้าง PDF..."; btn.disabled = true;
+  try{
+    buildWorkReportHtml(currentWorkDay);
+    await exportReportAsPdf("work-print-report", "landscape", `มอบหมายงาน-วัน${currentWorkDay}.pdf`);
+  }finally{
+    btn.textContent = orig; btn.disabled = false;
+  }
 });
 
 initMonthSelect();
