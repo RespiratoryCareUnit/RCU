@@ -154,6 +154,8 @@
                     width:32px;height:32px;border-radius:8px;cursor:pointer;}
   .prev-body{flex:1;overflow:auto;padding:12px;background:#f4f6fa;}
   /* แสดงขนาดเท่าไฟล์ PDF จริง (แนวนอน กว้าง 1100px) */
+  .prev-fit{margin:0 auto;overflow:hidden;}
+  .prev-head button.prev-zoom{width:auto;padding:0 10px;font-size:.72rem;font-weight:700;}
   .prev-sheet{width:1100px;padding:16px;background:#fff;margin:0 auto;}
   .prev-foot{padding:10px 12px;border-top:1px solid var(--line);}
   .prev-foot button{width:100%;background:var(--ok);color:#fff;border:none;border-radius:8px;
@@ -273,6 +275,7 @@
   <div class="prev-box">
     <div class="prev-head">
       <span id="prev-title">ตัวอย่างก่อนพิมพ์</span>
+      <button type="button" id="prev-zoom" class="prev-zoom">🔍 ขยาย</button>
       <button type="button" id="prev-close">✕</button>
     </div>
     <div class="prev-body" id="prev-body"></div>
@@ -1048,13 +1051,41 @@ document.getElementById("btn-print-assign").addEventListener("click", async (e)=
   btn.textContent = original;
   btn.disabled = false;
 });
+
+// ย่อ "แผ่นรายงาน" ให้พอดีความกว้างจอ โดยคงเลย์เอาต์เท่าไฟล์ PDF
+let prevFit = true;      // true = ย่อพอดีจอ, false = ขนาดจริง
+function fitPreviewSheet(){
+  const body = document.getElementById("prev-body");
+  const sheet = body.querySelector(".prev-sheet");
+  if(!sheet) return;
+  const natural = sheet.dataset.w ? parseInt(sheet.dataset.w) : sheet.offsetWidth;
+  const avail = body.clientWidth - 24;                 // เว้นขอบซ้ายขวา
+  if(avail <= 0) return;                               // พรีวิวปิดอยู่ ไม่ต้องคำนวณ
+  const k = prevFit ? Math.max(0.2, Math.min(1, avail / natural)) : 1;
+  sheet.style.transform = `scale(${k})`;
+  sheet.style.transformOrigin = "top left";
+  // transform ไม่ลดพื้นที่ที่ใช้จริง จึงต้องกำหนดขนาดกล่องห่อให้ตรงกับที่ย่อแล้ว
+  const wrap = sheet.parentElement;
+  wrap.style.width  = (natural * k) + "px";
+  wrap.style.height = (sheet.offsetHeight * k) + "px";
+}
+window.addEventListener("resize", fitPreviewSheet);
+
 // แสดงตัวอย่างก่อน แล้วค่อยให้กดดาวน์โหลด
 document.getElementById("btn-print-work").addEventListener("click", ()=>{
   buildWorkReportHtml(currentWorkDay);
   document.getElementById("prev-title").textContent = `ตัวอย่าง — มอบหมายงาน วันที่ ${currentWorkDay}`;
   document.getElementById("prev-body").innerHTML =
-    `<div class="prev-sheet">${document.getElementById("work-print-report").innerHTML}</div>`;
+    `<div class="prev-fit"><div class="prev-sheet" data-w="1100">${document.getElementById("work-print-report").innerHTML}</div></div>`;
   document.getElementById("prev-overlay").style.display = "flex";
+  prevFit = true;
+  document.getElementById("prev-zoom").textContent = "🔍 ขยาย";
+  fitPreviewSheet();
+});
+document.getElementById("prev-zoom").addEventListener("click", ()=>{
+  prevFit = !prevFit;
+  document.getElementById("prev-zoom").textContent = prevFit ? "🔍 ขยาย" : "↔ พอดีจอ";
+  fitPreviewSheet();
 });
 document.getElementById("prev-close").addEventListener("click", ()=>{
   document.getElementById("prev-overlay").style.display = "none";
