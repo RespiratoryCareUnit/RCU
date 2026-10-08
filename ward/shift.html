@@ -263,6 +263,21 @@
   table.daily-table tr.care-group-vap td.label{background:#e9d7f7;}
   table.daily-table tr.care-group-tpiece td{background:#fde9ec;}
   table.daily-table tr.care-group-tpiece td.label{background:#fbd7dd;}
+
+/* ===== จอกว้าง (คอม/แท็บเล็ต/คอมที่ซูมเบราว์เซอร์): แสดง 3 เวรเรียงข้างกันพอดีจอ ไม่ต้องเลื่อนซ้ายขวา =====
+   มือถือ (แคบกว่า 760px) ยังใช้แบบปัดทีละเวรเหมือนเดิม */
+@media (min-width:760px){
+  main{max-width:none;padding-left:24px;padding-right:24px;}
+  #proc,#export{max-width:760px;margin-left:auto;margin-right:auto;}   /* หน้ารายการยาวๆ คงความกว้างอ่านง่าย */
+  .view-btn{max-width:360px;}
+  .scroll-wrap{overflow-x:visible;}
+  table.daily-table{min-width:0 !important;}
+  table.daily-table col:first-child{width:190px !important;}           /* ป้ายชื่อรายการกว้างขึ้น ไม่ต้องตัดบรรทัด */
+  table.daily-table col:not(:first-child){width:auto !important;}      /* คอลัมน์เวรแบ่งความกว้างเท่ากัน */
+  .p4pd-submit-spacer{flex-basis:190px;}                               /* ให้ปุ่ม Submit ตรงใต้คอลัมน์เวร */
+  .event-scroll-row{overflow-x:visible;scroll-snap-type:none;}
+  .event-card-slot{flex:1 1 0;min-width:0;scroll-snap-align:none;}
+}
 </style>
 </head>
 <body>
@@ -657,7 +672,7 @@ function renderP4pdList(){
   const el = document.getElementById("p4pd-list");
   let html = `<div class="scroll-wrap"><table class="daily-table p4pd-table"><colgroup>
     <col style="width:104px">
-    <col style="width:calc((100vw - 140px)/3)"><col style="width:calc((100vw - 140px)/3)"><col style="width:calc((100vw - 140px)/3)">
+    <col><col><col>
   </colgroup><tr>
     <th class="sticky-col">ข้อมูล</th><th class="hd-ดึก">ดึก</th><th class="hd-เช้า">เช้า</th><th class="hd-บ่าย">บ่าย</th>
   </tr>`;
@@ -691,7 +706,7 @@ function renderDiagList(){
   const el = document.getElementById("diag-list");
   let html = `<div class="scroll-wrap"><table class="daily-table p4pd-table"><colgroup>
     <col style="width:104px">
-    <col style="width:calc((100vw - 140px)/3)"><col style="width:calc((100vw - 140px)/3)"><col style="width:calc((100vw - 140px)/3)">
+    <col><col><col>
   </colgroup><tr>
     <th class="sticky-col">Diagnosis</th><th class="hd-ดึก">ดึก</th><th class="hd-เช้า">เช้า</th><th class="hd-บ่าย">บ่าย</th>
   </tr>`;
