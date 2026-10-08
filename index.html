@@ -5,7 +5,24 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>RCU1 — ระบบบริหารจัดการผู้ป่วย</title>
 
-<style>:root{--bg:#F0F4FB;--bg2:#FFFFFF;--bg3:#E2EAF4;--border:#B8CCE4;--border2:#8AAAD0;--text:#1A2B45;--muted:#5A7A9A;--dim:#3A6A9A;--blue:#1565C0;--green:#2E7D32;--red:#C62828;--amber:#F57F17;--purple:#6A1B9A;--orange:#E65100;--blue-bg:#E3F0FB;--green-bg:#E8F5E9;--red-bg:#FFEBEE;--amber-bg:#FFFDE7;--fs-xs:clamp(9px,1.2vw,11px);--fs-sm:clamp(11px,1.4vw,13px);--fs-md:clamp(12px,1.6vw,14px);--fs-lg:clamp(14px,1.8vw,16px)}*{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans Thai','IBM Plex Mono',sans-serif;min-height:100vh;font-size:var(--fs-md)}*{font-family:'IBM Plex Sans Thai','IBM Plex Mono',sans-serif}::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:#f0f4ff}::-webkit-scrollbar-thumb{background:#a0b4d0;border-radius:3px}#app-header{background:#C5D8EF;border-bottom:1px solid #A8C4E0;padding:10px 18px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:100}.logo{background:linear-gradient(135deg,#0D2B5E,#1976D2);border-radius:10px;padding:8px 14px;font-weight:800;font-size:20px;letter-spacing:3px;color:#fff;box-shadow:0 2px 12px #1565C044;font-family:'IBM Plex Mono','IBM Plex Mono';flex-shrink:0}.header-title{color:var(--text);font-weight:700;font-size:var(--fs-lg)}.header-sub{color:#0D2B5E;font-size:11px;font-weight:700;white-space:nowrap}.census-badge{margin-left:auto;background:var(--bg2);border:1px solid #00e67644;border-radius:10px;padding:8px 18px;text-align:center;min-width:70px}.census-badge .num{color:var(--green);font-size:clamp(20px,2.5vw,28px);font-weight:800;line-height:1;font-family:'IBM Plex Mono','IBM Plex Mono'}.census-badge .lbl{color:var(--muted);font-size:var(--fs-xs);margin-top:2px}#tabs{display:flex;background:#FFFFFF;border-bottom:2px solid var(--border);padding:0 12px;overflow-x:auto;box-shadow:0 1px 4px #1565C011}.tab-btn{background:none;border:none;padding:13px 18px;font-size:var(--fs-sm);font-weight:700;cursor:pointer;letter-spacing:.4px;color:#5A7A9A;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .15s;white-space:nowrap;font-family:'IBM Plex Sans Thai',sans-serif}.tab-btn:hover{color:var(--blue);background:#f0f6ff;border-radius:6px 6px 0 0}.tab-btn.active{color:#0D47A1;border-bottom-color:#1565C0;background:#EEF4FF;border-radius:6px 6px 0 0}.tab-btn[data-tab="list"].active{color:#1B5E20;border-bottom-color:#2E7D32;background:#E8F5E9}.tab-btn[data-tab="discharge"].active{color:#E65100;border-bottom-color:#F57F17;background:#FFF8E1}.tab-btn[data-tab="dashboard"].active{color:#4A148C;border-bottom-color:#6A1B9A;background:#F3E5F5}#content{padding:24px;max-width:920px;margin:0 auto}.tab-panel{display:none}.tab-panel.active{display:block}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 24px}.form-grid.full{grid-template-columns:1fr}.field{margin-bottom:14px}.field label{display:block;color:var(--muted);font-size:11px;font-weight:700;margin-bottom:5px;letter-spacing:.9px;text-transform:uppercase}.field label .req{color:var(--red);margin-left:3px}input[type=text],input[type=number],input[type=date],input[type=time],select,textarea{background:#ffffff;border:1px solid var(--border);border-radius:8px;color:var(--text);padding:9px 13px;width:100%;font-size:var(--fs-md);outline:none;font-family:'IBM Plex Sans Thai',sans-serif;transition:border-color .15s;color-scheme:light}input:focus,select:focus,textarea:focus{border-color:var(--blue)}select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%237bb8d4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}textarea{resize:vertical;min-height:80px}.span2{grid-column:1/-1}.chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:2px}.chip{cursor:pointer;border-radius:20px;padding:4px 13px;font-size:var(--fs-sm);font-weight:600;border:1px solid var(--border);color:var(--muted);background:transparent;transition:all .15s;user-select:none}.chip.on{color:var(--blue);border-color:var(--blue);background:var(--blue-bg)}.chip.on.amber{color:var(--amber);border-color:var(--amber);background:var(--amber-bg)}.btn{border:none;border-radius:8px;color:#fff;padding:11px 24px;font-size:var(--fs-md);font-weight:700;cursor:pointer;letter-spacing:.4px;font-family:'IBM Plex Sans Thai',sans-serif;transition:opacity .15s}.btn:hover{opacity:.88}.btn:disabled{opacity:.4;cursor:not-allowed;pointer-events:none}.btn.blue{background:#0ea5e9}.btn.green{background:#00e676}.btn.purple{background:#7c3aed}.btn.amber{background:#d97706}.btn.full{width:100%;padding:13px;font-size:15px}.search-bar{display:flex;gap:10px;margin-bottom:16px}.search-bar input{flex:1}.patient-row{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:11px 15px;cursor:pointer;display:grid;grid-template-columns:90px 1fr auto auto auto;align-items:center;gap:12px;transition:border-color .15s;margin-bottom:7px}.patient-row:hover{border-color:var(--blue)}.hn-tag{background:var(--blue-bg);border-radius:6px;padding:3px 9px;font-size:12px;color:var(--blue);font-weight:700;text-align:center;font-family:'IBM Plex Mono','IBM Plex Mono'}.pt-name{color:var(--text);font-weight:600;font-size:var(--fs-md)}.pt-sub{color:var(--muted);font-size:var(--fs-sm);margin-top:1px}.type-badge{font-size:var(--fs-xs);font-weight:800;border-radius:20px;padding:2px 10px;border:1px solid}.status-badge{font-size:var(--fs-xs);border-radius:20px;padding:2px 10px;border:1px solid}.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;margin-bottom:14px}.stat-card{background:var(--bg2);border-radius:8px;padding:6px 4px;text-align:center;border:1px solid}.stat-card .icon{font-size:14px;margin-bottom:1px}.stat-card .val{font-size:20px;font-weight:800;line-height:1;font-family:'IBM Plex Mono','IBM Plex Mono'}.stat-card .lbl{color:var(--muted);font-size:9px;margin-top:2px;font-weight:600;letter-spacing:.3px}.month-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}.month-row{display:flex;justify-content:space-between;padding:6px 10px;background:#f0f4ff;border-radius:6px}.month-row span:first-child{color:var(--muted);font-size:var(--fs-sm)}.month-row span:last-child{color:var(--text);font-size:var(--fs-sm);font-weight:700;font-family:'IBM Plex Mono','IBM Plex Mono'}.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.kpi-box{border-radius:8px;padding:8px;text-align:center;border:1px solid}.kpi-box .knum{font-size:18px;font-weight:800;font-family:'IBM Plex Mono','IBM Plex Mono'}.kpi-box .klbl{color:var(--muted);font-size:11px;margin-top:3px}.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}.bar-rank{color:var(--blue);font-size:var(--fs-sm);width:18px;text-align:right;font-weight:700;font-family:'IBM Plex Mono','IBM Plex Mono'}.bar-wrap{flex:1;background:#f0f4ff;border-radius:4px;overflow:hidden;height:22px;position:relative}.bar-fill{height:100%;transition:width .4s}.bar-label{position:absolute;left:6px;top:0;font-size:var(--fs-xs);color:#ffffff;line-height:22px;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.3)}.bar-count{color:var(--text);font-size:var(--fs-sm);font-weight:700;width:24px;text-align:right;font-family:'IBM Plex Mono','IBM Plex Mono'}.modal-overlay{position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;background:rgba(6,15,30,.8);backdrop-filter:blur(4px)}#modal-error,#modal-success{z-index:2000}.modal-box{background:var(--bg3);border:1.5px solid var(--border);border-radius:16px;padding:26px 30px;min-width:320px;max-width:600px;width:90vw;max-height:88vh;overflow-y:auto;box-shadow:0 12px 60px #0009}.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}.modal-title{color:var(--blue);font-weight:700;font-size:var(--fs-lg);letter-spacing:.5px}.modal-close{background:none;border:none;color:var(--muted);font-size:24px;cursor:pointer;line-height:1;padding:0}.detail-table{width:100%;border-collapse:collapse}.detail-table tr{border-bottom:1px solid #a0b4d0}.detail-table tr:last-child{border-bottom:none}.detail-table td{padding:6px 10px;font-size:var(--fs-sm)}.detail-table td:first-child{color:var(--muted);font-weight:600;width:45%}.detail-table td:last-child{color:var(--text)}.modal-success{border-color:#00e676;background:#E8F5E9;text-align:center;padding:36px 48px}.modal-error{border-color:#ff1744;background:#FFEBEE;text-align:center;padding:36px 48px}.modal-icon{font-size:48px;margin-bottom:10px}.modal-msg{font-size:18px;font-weight:700;margin-bottom:16px;white-space:pre-line}.found-box{background:#f0f4ff;border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px}.found-box .found-label{color:var(--green);font-weight:700;font-size:14px;margin-bottom:5px}.section-title{color:var(--blue);font-weight:700;font-size:var(--fs-md);margin-bottom:12px;display:flex;align-items:center;gap:6px}.filter-row{display:grid;grid-template-columns:1fr 140px 160px;gap:10px;margin-bottom:14px}.panel{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px}.empty{color:var(--muted);text-align:center;padding:40px;border:1px dashed var(--border);border-radius:10px;font-size:13px}.month-sel-row{display:flex;gap:10px;margin-bottom:18px;align-items:center}.month-sel-row select{width:auto;flex:none}.extra-panel{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px}.extra-label{color:var(--muted);font-size:11px;font-weight:700;margin-bottom:10px;letter-spacing:.8px;text-transform:uppercase}.los-display{background:var(--green-bg);border:1px solid #00e67644;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:14px;color:var(--green);font-weight:700;text-align:center}.los-display strong{font-family:'IBM Plex Mono','IBM Plex Mono';font-size:16px}.diag-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 24px}@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}.tab-panel.active{animation:fadeIn .2s ease}@media(max-width:600px){.form-grid{grid-template-columns:1fr}.filter-row{grid-template-columns:1fr}.patient-row{grid-template-columns:80px 1fr;gap:8px}.patient-row .type-badge,.patient-row .pt-date,.patient-row .status-badge{display:none}.stat-grid{grid-template-columns:repeat(3,1fr)}.diag-grid{grid-template-columns:1fr}.month-grid{grid-template-columns:1fr}.kpi-grid{grid-template-columns:1fr 1fr}}.field input,.field select,.field textarea{color:var(--text)!important}</style>
+<style>:root{--bg:#F0F4FB;--bg2:#FFFFFF;--bg3:#E2EAF4;--border:#B8CCE4;--border2:#8AAAD0;--text:#1A2B45;--muted:#5A7A9A;--dim:#3A6A9A;--blue:#1565C0;--green:#2E7D32;--red:#C62828;--amber:#F57F17;--purple:#6A1B9A;--orange:#E65100;--blue-bg:#E3F0FB;--green-bg:#E8F5E9;--red-bg:#FFEBEE;--amber-bg:#FFFDE7;--fs-xs:clamp(9px,1.2vw,11px);--fs-sm:clamp(11px,1.4vw,13px);--fs-md:clamp(12px,1.6vw,14px);--fs-lg:clamp(14px,1.8vw,16px)}*{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans Thai','IBM Plex Mono',sans-serif;min-height:100vh;font-size:var(--fs-md)}*{font-family:'IBM Plex Sans Thai','IBM Plex Mono',sans-serif}::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:#f0f4ff}::-webkit-scrollbar-thumb{background:#a0b4d0;border-radius:3px}#app-header{background:#C5D8EF;border-bottom:1px solid #A8C4E0;padding:10px 18px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:100}.logo{background:linear-gradient(135deg,#0D2B5E,#1976D2);border-radius:10px;padding:8px 14px;font-weight:800;font-size:20px;letter-spacing:3px;color:#fff;box-shadow:0 2px 12px #1565C044;font-family:'IBM Plex Mono','IBM Plex Mono';flex-shrink:0}.header-title{color:var(--text);font-weight:700;font-size:var(--fs-lg)}.header-sub{color:#0D2B5E;font-size:11px;font-weight:700;white-space:nowrap}.census-badge{margin-left:auto;background:var(--bg2);border:1px solid #00e67644;border-radius:10px;padding:8px 18px;text-align:center;min-width:70px}.census-badge .num{color:var(--green);font-size:clamp(20px,2.5vw,28px);font-weight:800;line-height:1;font-family:'IBM Plex Mono','IBM Plex Mono'}.census-badge .lbl{color:var(--muted);font-size:var(--fs-xs);margin-top:2px}#tabs{display:flex;background:#FFFFFF;border-bottom:2px solid var(--border);padding:0 12px;overflow-x:auto;box-shadow:0 1px 4px #1565C011}.tab-btn{background:none;border:none;padding:13px 18px;font-size:var(--fs-sm);font-weight:700;cursor:pointer;letter-spacing:.4px;color:#5A7A9A;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .15s;white-space:nowrap;font-family:'IBM Plex Sans Thai',sans-serif}.tab-btn:hover{color:var(--blue);background:#f0f6ff;border-radius:6px 6px 0 0}.tab-btn.active{color:#0D47A1;border-bottom-color:#1565C0;background:#EEF4FF;border-radius:6px 6px 0 0}.tab-btn[data-tab="list"].active{color:#1B5E20;border-bottom-color:#2E7D32;background:#E8F5E9}.tab-btn[data-tab="discharge"].active{color:#E65100;border-bottom-color:#F57F17;background:#FFF8E1}.tab-btn[data-tab="dashboard"].active{color:#4A148C;border-bottom-color:#6A1B9A;background:#F3E5F5}#content{padding:24px;max-width:920px;margin:0 auto}.tab-panel{display:none}.tab-panel.active{display:block}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 24px}.form-grid.full{grid-template-columns:1fr}.field{margin-bottom:14px}.field label{display:block;color:var(--muted);font-size:11px;font-weight:700;margin-bottom:5px;letter-spacing:.9px;text-transform:uppercase}.field label .req{color:var(--red);margin-left:3px}input[type=text],input[type=number],input[type=date],input[type=time],select,textarea{background:#ffffff;border:1px solid var(--border);border-radius:8px;color:var(--text);padding:9px 13px;width:100%;font-size:var(--fs-md);outline:none;font-family:'IBM Plex Sans Thai',sans-serif;transition:border-color .15s;color-scheme:light}input:focus,select:focus,textarea:focus{border-color:var(--blue)}select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%237bb8d4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}textarea{resize:vertical;min-height:80px}.span2{grid-column:1/-1}.chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:2px}.chip{cursor:pointer;border-radius:20px;padding:4px 13px;font-size:var(--fs-sm);font-weight:600;border:1px solid var(--border);color:var(--muted);background:transparent;transition:all .15s;user-select:none}.chip.on{color:var(--blue);border-color:var(--blue);background:var(--blue-bg)}.chip.on.amber{color:var(--amber);border-color:var(--amber);background:var(--amber-bg)}.btn{border:none;border-radius:8px;color:#fff;padding:11px 24px;font-size:var(--fs-md);font-weight:700;cursor:pointer;letter-spacing:.4px;font-family:'IBM Plex Sans Thai',sans-serif;transition:opacity .15s}.btn:hover{opacity:.88}.btn:disabled{opacity:.4;cursor:not-allowed;pointer-events:none}.btn.blue{background:#0ea5e9}.btn.green{background:#00e676}.btn.purple{background:#7c3aed}.btn.amber{background:#d97706}.btn.full{width:100%;padding:13px;font-size:15px}.search-bar{display:flex;gap:10px;margin-bottom:16px}.search-bar input{flex:1}.patient-row{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:11px 15px;cursor:pointer;display:grid;grid-template-columns:90px 1fr auto auto auto;align-items:center;gap:12px;transition:border-color .15s;margin-bottom:7px}.patient-row:hover{border-color:var(--blue)}.hn-tag{background:var(--blue-bg);border-radius:6px;padding:3px 9px;font-size:12px;color:var(--blue);font-weight:700;text-align:center;font-family:'IBM Plex Mono','IBM Plex Mono'}.pt-name{color:var(--text);font-weight:600;font-size:var(--fs-md)}.pt-sub{color:var(--muted);font-size:var(--fs-sm);margin-top:1px}.type-badge{font-size:var(--fs-xs);font-weight:800;border-radius:20px;padding:2px 10px;border:1px solid}.status-badge{font-size:var(--fs-xs);border-radius:20px;padding:2px 10px;border:1px solid}.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;margin-bottom:14px}.stat-card{background:var(--bg2);border-radius:8px;padding:6px 4px;text-align:center;border:1px solid}.stat-card .icon{font-size:14px;margin-bottom:1px}.stat-card .val{font-size:20px;font-weight:800;line-height:1;font-family:'IBM Plex Mono','IBM Plex Mono'}.stat-card .lbl{color:var(--muted);font-size:9px;margin-top:2px;font-weight:600;letter-spacing:.3px}.month-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}.month-row{display:flex;justify-content:space-between;padding:6px 10px;background:#f0f4ff;border-radius:6px}.month-row span:first-child{color:var(--muted);font-size:var(--fs-sm)}.month-row span:last-child{color:var(--text);font-size:var(--fs-sm);font-weight:700;font-family:'IBM Plex Mono','IBM Plex Mono'}.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.kpi-box{border-radius:8px;padding:8px;text-align:center;border:1px solid}.kpi-box .knum{font-size:18px;font-weight:800;font-family:'IBM Plex Mono','IBM Plex Mono'}.kpi-box .klbl{color:var(--muted);font-size:11px;margin-top:3px}.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}.bar-rank{color:var(--blue);font-size:var(--fs-sm);width:18px;text-align:right;font-weight:700;font-family:'IBM Plex Mono','IBM Plex Mono'}.bar-wrap{flex:1;background:#f0f4ff;border-radius:4px;overflow:hidden;height:22px;position:relative}.bar-fill{height:100%;transition:width .4s}.bar-label{position:absolute;left:6px;top:0;font-size:var(--fs-xs);color:#ffffff;line-height:22px;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.3)}.bar-count{color:var(--text);font-size:var(--fs-sm);font-weight:700;width:24px;text-align:right;font-family:'IBM Plex Mono','IBM Plex Mono'}.modal-overlay{position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;background:rgba(6,15,30,.8);backdrop-filter:blur(4px)}#modal-error,#modal-success{z-index:2000}.modal-box{background:var(--bg3);border:1.5px solid var(--border);border-radius:16px;padding:26px 30px;min-width:320px;max-width:600px;width:90vw;max-height:88vh;overflow-y:auto;box-shadow:0 12px 60px #0009}.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}.modal-title{color:var(--blue);font-weight:700;font-size:var(--fs-lg);letter-spacing:.5px}.modal-close{background:none;border:none;color:var(--muted);font-size:24px;cursor:pointer;line-height:1;padding:0}.detail-table{width:100%;border-collapse:collapse}.detail-table tr{border-bottom:1px solid #a0b4d0}.detail-table tr:last-child{border-bottom:none}.detail-table td{padding:6px 10px;font-size:var(--fs-sm)}.detail-table td:first-child{color:var(--muted);font-weight:600;width:45%}.detail-table td:last-child{color:var(--text)}.modal-success{border-color:#00e676;background:#E8F5E9;text-align:center;padding:36px 48px}.modal-error{border-color:#ff1744;background:#FFEBEE;text-align:center;padding:36px 48px}.modal-icon{font-size:48px;margin-bottom:10px}.modal-msg{font-size:18px;font-weight:700;margin-bottom:16px;white-space:pre-line}.found-box{background:#f0f4ff;border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px}.found-box .found-label{color:var(--green);font-weight:700;font-size:14px;margin-bottom:5px}.section-title{color:var(--blue);font-weight:700;font-size:var(--fs-md);margin-bottom:12px;display:flex;align-items:center;gap:6px}.filter-row{display:grid;grid-template-columns:1fr 140px 160px;gap:10px;margin-bottom:14px}.panel{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px}.empty{color:var(--muted);text-align:center;padding:40px;border:1px dashed var(--border);border-radius:10px;font-size:13px}.month-sel-row{display:flex;gap:10px;margin-bottom:18px;align-items:center}.month-sel-row select{width:auto;flex:none}.extra-panel{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px}.extra-label{color:var(--muted);font-size:11px;font-weight:700;margin-bottom:10px;letter-spacing:.8px;text-transform:uppercase}.los-display{background:var(--green-bg);border:1px solid #00e67644;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:14px;color:var(--green);font-weight:700;text-align:center}.los-display strong{font-family:'IBM Plex Mono','IBM Plex Mono';font-size:16px}.diag-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 24px}@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}.tab-panel.active{animation:fadeIn .2s ease}@media(max-width:600px){.form-grid{grid-template-columns:1fr}.filter-row{grid-template-columns:1fr}.patient-row{grid-template-columns:80px 1fr;gap:8px}.patient-row .type-badge,.patient-row .pt-date,.patient-row .status-badge{display:none}.stat-grid{grid-template-columns:repeat(3,1fr)}.diag-grid{grid-template-columns:1fr}.month-grid{grid-template-columns:1fr}.kpi-grid{grid-template-columns:1fr 1fr}}.field input,.field select,.field textarea{color:var(--text)!important}
+/* ===== FAST PASS stamp ===== */
+.fp-btn{display:inline-flex;align-items:center;gap:6px;background:#f3f4f6;border:2px dashed #b0b7c3;color:#9aa3b2;
+  border-radius:8px;padding:7px 16px;font-size:13px;font-weight:800;letter-spacing:1.5px;cursor:pointer;
+  font-family:inherit;transition:all .12s ease;}
+.fp-btn.on{background:#fff5f5;border:3px solid #d50000;color:#d50000;transform:rotate(-2deg);
+  box-shadow:0 0 0 2px #fff,0 0 0 4px rgba(213,0,0,.25);}
+.fp-stamp-sm{display:inline-block;margin-left:8px;padding:0 6px;border:2px solid #d50000;color:#d50000;
+  border-radius:4px;font-size:10px;font-weight:800;letter-spacing:1px;line-height:16px;vertical-align:middle;
+  transform:rotate(-3deg);background:#fff5f5;white-space:nowrap;}
+.edit-banner{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff8e1;
+  border:2px solid #f9a825;border-radius:10px;padding:10px 12px;color:#7a5200;font-size:13px;font-weight:600;line-height:1.4;}
+.edit-banner button{flex:0 0 auto;background:#fff;border:2px solid #d84315;color:#d84315;border-radius:8px;
+  padding:6px 14px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;}
+.bed-status{border-radius:10px;padding:9px 12px;font-size:13px;font-weight:700;line-height:1.45;border:2px solid;}
+.bed-status.ok{background:#e8f5e9;border-color:#66bb6a;color:#1b5e20;}
+.bed-status.warn{background:#fff3e0;border-color:#fb8c00;color:#bf360c;}
+</style>
 
  <!-- PWA -->
  <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjogIlJDVTEgUmVnaXN0ZXIiLCAic2hvcnRfbmFtZSI6ICJSQ1UxIiwgImRlc2NyaXB0aW9uIjogIlJlc3BpcmF0b3J5IENhcmUgVW5pdCAtIFx1MGUyM1x1MGUzMFx1MGUxYVx1MGUxYVx1MGUxYVx1MGUyM1x1MGUzNFx1MGUyYlx1MGUzMlx1MGUyM1x1MGUwOFx1MGUzMVx1MGUxNFx1MGUwMVx1MGUzMlx1MGUyM1x1MGUxY1x1MGUzOVx1MGU0OVx1MGUxYlx1MGU0OFx1MGUyN1x1MGUyMiIsICJzdGFydF91cmwiOiAiLiIsICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLCAiYmFja2dyb3VuZF9jb2xvciI6ICIjMGEwZTFhIiwgInRoZW1lX2NvbG9yIjogIiMwZDNiOGMiLCAib3JpZW50YXRpb24iOiAicG9ydHJhaXQiLCAiaWNvbnMiOiBbeyJzcmMiOiAiZGF0YTppbWFnZS9zdmcreG1sO2Jhc2U2NCxQSE4yWnlCNGJXeHVjejBpYUhSMGNEb3ZMM2QzZHk1M015NXZjbWN2TWpBd01DOXpkbWNpSUhkcFpIUm9QU0l4T1RJaUlHaGxhV2RvZEQwaU1Ua3lJaUIyYVdWM1FtOTRQU0l3SURBZ01Ua3lJREU1TWlJK0NpQWdQR1JsWm5NK0NpQWdJQ0E4YkdsdVpXRnlSM0poWkdsbGJuUWdhV1E5SW1KbklpQjRNVDBpTUNVaUlIa3hQU0l3SlNJZ2VESTlJakV3TUNVaUlIa3lQU0l4TURBbElqNEtJQ0FnSUNBZ1BITjBiM0FnYjJabWMyVjBQU0l3SlNJZ2MzUjViR1U5SW5OMGIzQXRZMjlzYjNJNkl6QmhNVFl5T0NJdlBnb2dJQ0FnSUNBOGMzUnZjQ0J2Wm1aelpYUTlJalV3SlNJZ2MzUjViR1U5SW5OMGIzQXRZMjlzYjNJNkl6QmtNMkk0WXlJdlBnb2dJQ0FnSUNBOGMzUnZjQ0J2Wm1aelpYUTlJakV3TUNVaUlITjBlV3hsUFNKemRHOXdMV052Ykc5eU9pTXhOVFkxWXpBaUx6NEtJQ0FnSUR3dmJHbHVaV0Z5UjNKaFpHbGxiblErQ2lBZ1BDOWtaV1p6UGdvZ0lEeHlaV04wSUhkcFpIUm9QU0l4T1RJaUlHaGxhV2RvZEQwaU1Ua3lJaUJ5ZUQwaU16Z2lJR1pwYkd3OUluVnliQ2dqWW1jcElpOCtDaUFnUEhSbGVIUWdlRDBpT1RZaUlIazlJakV3T0NJZ1ptOXVkQzFtWVcxcGJIazlJa0Z5YVdGc0lFSnNZV05yTENCQmNtbGhiQ0lnWm05dWRDMTNaV2xuYUhROUlqa3dNQ0lnWm05dWRDMXphWHBsUFNJMk5DSWdabWxzYkQwaWQyaHBkR1VpSUhSbGVIUXRZVzVqYUc5eVBTSnRhV1JrYkdVaUlHeGxkSFJsY2kxemNHRmphVzVuUFNJeUlqNVNRMVV4UEM5MFpYaDBQZ29nSUR4MFpYaDBJSGc5SWprMklpQjVQU0l4TXpnaUlHWnZiblF0Wm1GdGFXeDVQU0pCY21saGJDd2djMkZ1Y3kxelpYSnBaaUlnWm05dWRDMTNaV2xuYUhROUlqUXdNQ0lnWm05dWRDMXphWHBsUFNJeU1DSWdabWxzYkQwaUl6a3dZMkZtT1NJZ2RHVjRkQzFoYm1Ob2IzSTlJbTFwWkdSc1pTSWdiR1YwZEdWeUxYTndZV05wYm1jOUlqTWlQbkpsWjJsemRHVnlQQzkwWlhoMFBnbzhMM04yWno0PSIsICJzaXplcyI6ICIxOTJ4MTkyIiwgInR5cGUiOiAiaW1hZ2Uvc3ZnK3htbCJ9LCB7InNyYyI6ICJkYXRhOmltYWdlL3N2Zyt4bWw7YmFzZTY0LFBITjJaeUI0Yld4dWN6MGlhSFIwY0RvdkwzZDNkeTUzTXk1dmNtY3ZNakF3TUM5emRtY2lJSGRwWkhSb1BTSTFNVElpSUdobGFXZG9kRDBpTlRFeUlpQjJhV1YzUW05NFBTSXdJREFnTVRreUlERTVNaUkrQ2lBZ1BHUmxabk0rQ2lBZ0lDQThiR2x1WldGeVIzSmhaR2xsYm5RZ2FXUTlJbUpuSWlCNE1UMGlNQ1VpSUhreFBTSXdKU0lnZURJOUlqRXdNQ1VpSUhreVBTSXhNREFsSWo0S0lDQWdJQ0FnUEhOMGIzQWdiMlptYzJWMFBTSXdKU0lnYzNSNWJHVTlJbk4wYjNBdFkyOXNiM0k2SXpCaE1UWXlPQ0l2UGdvZ0lDQWdJQ0E4YzNSdmNDQnZabVp6WlhROUlqVXdKU0lnYzNSNWJHVTlJbk4wYjNBdFkyOXNiM0k2SXpCa00ySTRZeUl2UGdvZ0lDQWdJQ0E4YzNSdmNDQnZabVp6WlhROUlqRXdNQ1VpSUhOMGVXeGxQU0p6ZEc5d0xXTnZiRzl5T2lNeE5UWTFZekFpTHo0S0lDQWdJRHd2YkdsdVpXRnlSM0poWkdsbGJuUStDaUFnUEM5a1pXWnpQZ29nSUR4eVpXTjBJSGRwWkhSb1BTSTFNVElpSUdobGFXZG9kRDBpTlRFeUlpQnllRDBpTXpnaUlHWnBiR3c5SW5WeWJDZ2pZbWNwSWk4K0NpQWdQSFJsZUhRZ2VEMGlPVFlpSUhrOUlqRXdPQ0lnWm05dWRDMW1ZVzFwYkhrOUlrRnlhV0ZzSUVKc1lXTnJMQ0JCY21saGJDSWdabTl1ZEMxM1pXbG5hSFE5SWprd01DSWdabTl1ZEMxemFYcGxQU0kyTkNJZ1ptbHNiRDBpZDJocGRHVWlJSFJsZUhRdFlXNWphRzl5UFNKdGFXUmtiR1VpSUd4bGRIUmxjaTF6Y0dGamFXNW5QU0l5SWo1U1ExVXhQQzkwWlhoMFBnb2dJRHgwWlhoMElIZzlJamsySWlCNVBTSXhNemdpSUdadmJuUXRabUZ0YVd4NVBTSkJjbWxoYkN3Z2MyRnVjeTF6WlhKcFppSWdabTl1ZEMxM1pXbG5hSFE5SWpRd01DSWdabTl1ZEMxemFYcGxQU0l5TUNJZ1ptbHNiRDBpSXprd1kyRm1PU0lnZEdWNGRDMWhibU5vYjNJOUltMXBaR1JzWlNJZ2JHVjBkR1Z5TFhOd1lXTnBibWM5SWpNaVBuSmxaMmx6ZEdWeVBDOTBaWGgwUGdvOEwzTjJaejQ9IiwgInNpemVzIjogIjUxMng1MTIiLCAidHlwZSI6ICJpbWFnZS9zdmcreG1sIn1dfQ==">
@@ -70,6 +87,9 @@
  <!-- REGISTER -->
  <div class="tab-panel active" id="tab-register">
  <div class="form-grid">
+  <div class="field" id="bed-status" style="grid-column:1/-1"></div>
+  <div class="field" id="edit-banner" style="grid-column:1/-1;display:none"><div class="edit-banner"><span>✏️ กำลังแก้ไขข้อมูลผู้ป่วย: <b id="edit-banner-name"></b> <span id="edit-banner-hn"></span></span><button type="button" onclick="cancelEditAdmit()">ยกเลิก</button></div></div>
+  <div class="field" style="grid-column:1/-1"><button type="button" id="r-fastpass" class="fp-btn" onclick="toggleFastPassForm()" aria-pressed="false">FAST PASS</button></div>
  <div class="field"><label>ชื่อ-นามสกุล <span class="req">*</span></label><input type="text" id="r-name" oninput="checkRegisterReady()" placeholder="ชื่อ นามสกุล"></div>
  <div class="field"><label>HN <span class="req">*</span></label><input type="text" id="r-hn" oninput="checkRegisterReady()" placeholder="เลข HN"></div>
  <div class="field"><label>AN <span class="req">*</span></label><input type="text" id="r-an" oninput="checkRegisterReady()" placeholder="เลข AN"></div>
@@ -558,7 +578,7 @@
  </div>
  </div>
  <div style="margin-top:20px">
- <button class="btn blue full" id="btn-register" onclick="doRegister()" disabled style="opacity:.4;cursor:not-allowed">⏩ ลงทะเบียนรับผู้ป่วย</button>
+ <button class="btn blue full" id="btn-register" onclick="guardedRegister()" disabled style="opacity:.4;cursor:not-allowed">⏩ ลงทะเบียนรับผู้ป่วย</button>
  </div>
  </div>
  <!-- LIST -->
@@ -635,6 +655,16 @@
  <div class="modal-icon">⚠️</div>
  <div class="modal-msg" id="error-msg" style="color:var(--red)"></div>
  <button class="btn" style="background:#ff1744" onclick="closeModal('modal-error')">ตกลง</button>
+ </div>
+</div>
+<div class="modal-overlay" id="modal-beds" style="display:none" onclick="closeModal('modal-beds')">
+ <div class="modal-box modal-error" onclick="event.stopPropagation()">
+  <div class="modal-icon">🔴</div>
+  <div class="modal-msg" id="beds-msg" style="color:var(--red)"></div>
+  <div style="display:flex;flex-direction:column;gap:10px">
+   <button class="btn" style="background:#ff1744" onclick="closeModal('modal-beds');switchTab('list')">ไปหน้ารายชื่อผู้ป่วย เพื่อจำหน่าย</button>
+   <button class="btn" style="background:#fff;color:#c62828;border:2px solid #ff1744" onclick="closeModal('modal-beds')">ปิด</button>
+  </div>
  </div>
 </div>
 <div class="modal-overlay" id="modal-detail" style="display:none" onclick="closeModal('modal-detail')">
@@ -948,6 +978,22 @@ function toggleSourceDeptSpec(){
 }
 
 let _onFCState = null;
+let _fastPass = false;
+function setFastPassForm(on){
+  _fastPass = !!on;
+  const b = document.getElementById('r-fastpass');
+  if(b){ b.classList.toggle('on', _fastPass); b.setAttribute('aria-pressed', _fastPass ? 'true' : 'false'); }
+}
+function toggleFastPassForm(){ setFastPassForm(!_fastPass); }
+// ติด/ถอดตราภายหลัง จากหน้ารายละเอียดผู้ป่วย
+function toggleFastPassPatient(id){
+  const p = patients.find(x=>x.id===id || String(x.id)===String(id));
+  if(!p) return;
+  p.fastPass = !p.fastPass;
+  saveData();
+  renderList();
+  showDetail(p.id);
+}
 function setOnFC(val){
   _onFCState = val;
   const yes = document.getElementById('r-onfc-yes');
@@ -1222,7 +1268,8 @@ function checkRegisterReady(){
   const patType=document.getElementById('r-type').value;
   const diag=document.getElementById('r-diag').value;
   const saps3=Number(document.getElementById('saps3-score').textContent)||0;
-  const ready=!!(name&&hn&&an&&age&&gender&&right&&patType&&diag&&saps3>0&&_onFCState);
+  const ready0=!!(name&&hn&&an&&age&&gender&&right&&patType&&diag&&saps3>0&&_onFCState);
+  const ready=ready0||(!window._editAdmitMode&&bedsFull());   // เตียงเต็ม: ให้กดได้เพื่อขึ้นป๊อปอัปแจ้งเตือน
   const btn=document.getElementById('btn-register');
   if(btn){
     btn.disabled=!ready;
@@ -1294,6 +1341,7 @@ function doRegister(){
     source:document.getElementById('r-source').value,
     sourceDept:(document.getElementById('r-source-dept')||{value:''}).value.trim(),
     sourceDeptSpec:(document.getElementById('r-source-dept-spec')||{value:''}).value.trim(),
+    fastPass:!!_fastPass,
     status:'admitted',
     dischargeDate:null,dcType:null,finalDiag:null,finalDiagSpec:null,los:null,summary:'',
     nr:false,cpr:false,refused:false,weanSuccess:false,weanFail:false
@@ -1315,6 +1363,7 @@ function doRegister(){
         akiStage:p.akiStage, akiKRT:p.akiKRT,
         admitDate:p.admitDate, admitTime:p.admitTime,
         source:p.source, sourceDept:p.sourceDept, sourceDeptSpec:p.sourceDeptSpec,
+        fastPass:p.fastPass,
       });
       updateCensus();
       saveData();
@@ -1324,7 +1373,8 @@ function doRegister(){
       showSuccess('แก้ไขข้อมูลสำเร็จ ✓');
       switchTab('list');
       // reset form
-      ['r-name','r-hn','r-an','r-age','r-diag-spec'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+      hideEditBanner();
+      resetRegisterForm();
       return;
     }
   }
@@ -1342,7 +1392,7 @@ function doRegister(){
     // วันที่จากหน้า 1 (admitDate, admitTime) แสดงเป็น ค.ศ.
     const admitDateStr = (p.admitDate||'') + (p.admitTime?' '+p.admitTime:'');
     sendLineNotify(
-      '🏥 RCU1 — รับผู้ป่วยใหม่\n━━━━━━━━━━━━━━━\n'+
+      '🏥 RCU1 — รับผู้ป่วยใหม่'+(p.fastPass?'  🚨 FAST PASS':'')+'\n━━━━━━━━━━━━━━━\n'+
       '👤 ชื่อ: '+(p.name||'-')+'\n'+
       '🔢 HN: '+(p.hn||'-')+' | AN: '+(p.an||'-')+'\n'+
       '📋 Dx: '+(p.diagnosis||'-')+'\n'+
@@ -1358,6 +1408,7 @@ function doRegister(){
   const tubeWrap=document.getElementById('r-on-tube-wrap');if(tubeWrap)tubeWrap.style.display='none';
   const tubeDate=document.getElementById('r-on-tube-date');if(tubeDate)tubeDate.value='';
   _onFCState=null;
+  setFastPassForm(false);
   ['r-onfc-yes','r-onfc-no'].forEach(id=>{const el=document.getElementById(id);if(el){el.style.color='var(--muted)';el.style.borderColor='var(--border)';el.style.background='transparent';}});
   ['r-onfc-date-wrap','r-onfc-from-wrap','r-onfc-spec-wrap','r-offfc-wrap','r-offfc-date-wrap','r-offfc-note-wrap'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
   ['r-onfc-date','r-onfc-from','r-onfc-spec','r-offfc-date','r-offfc-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
@@ -1383,7 +1434,150 @@ function doRegister(){
   if(_rbtn2){_rbtn2.dataset.submitting='';}
   showSuccess(window._editAdmitMode?'แก้ไขข้อมูลสำเร็จ ✓':'ลงทะเบียนรับผู้ป่วยสำเร็จ ✓');
 }
-function updateCensus(){document.getElementById('census-num').textContent=patients.filter(p=>p.status==='admitted').length;}
+function resetRegisterForm(){
+  ['r-name','r-hn','r-an','r-age','r-diag-spec'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  ['r-gender','r-right','r-oxy','r-type','r-diag','r-source'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  ['r-source-dept','r-source-dept-spec','r-oxy-spec'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  ['r-source-dept-wrap','r-source-dept-spec-wrap','r-diag-spec-wrap','r-oxy-spec-wrap'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='none';});
+  const rdka=document.getElementById('r-dka-section');if(rdka)rdka.style.display='none';
+  const tubeWrap=document.getElementById('r-on-tube-wrap');if(tubeWrap)tubeWrap.style.display='none';
+  const tubeDate=document.getElementById('r-on-tube-date');if(tubeDate)tubeDate.value='';
+  _onFCState=null;
+  setFastPassForm(false);
+  ['r-onfc-yes','r-onfc-no'].forEach(id=>{const el=document.getElementById(id);if(el){el.style.color='var(--muted)';el.style.borderColor='var(--border)';el.style.background='transparent';}});
+  ['r-onfc-date-wrap','r-onfc-from-wrap','r-onfc-spec-wrap','r-offfc-wrap','r-offfc-date-wrap','r-offfc-note-wrap'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+  ['r-onfc-date','r-onfc-from','r-onfc-spec','r-offfc-date','r-offfc-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  _offFCState=null;
+  rDkaState.bs=null;rDkaState.k=null;rDkaState.arr=null;
+    document.getElementById('r-date').value=today();
+    const rt=document.getElementById('r-time');if(rt)rt.value=nowTime();
+    ['s-age','s-comor','s-func','s-src','s-adm','s-diag','s-gcs','s-map','s-hr','s-ph','s-pf','s-cr','s-bili','s-plt'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});
+    ['news-bt','news-hr','news-rr','news-sbp','news-o2','news-spo2','news-con'].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});
+    window._newsScore=0;
+    const nss=document.getElementById('news-sepsis-section');if(nss)nss.style.display='none';
+    Object.keys(sepBundleState).forEach(k=>{sepBundleState[k]=null;});
+    calcNEWS();
+    ['aki-baseline','aki-current','aki-uo','aki-uo-dur'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    window._akiKRT='no';
+    if(typeof calcAKI==='function')calcAKI();
+    calcSaps3();
+  checkRegisterReady();
+}
+function showEditBanner(p){
+  const b=document.getElementById('edit-banner'); if(!b) return;
+  document.getElementById('edit-banner-name').textContent=p.name||'';
+  document.getElementById('edit-banner-hn').textContent=p.hn?'(HN '+p.hn+')':'';
+  b.style.display='block';
+  updateBedStatus();
+}
+function hideEditBanner(){ const b=document.getElementById('edit-banner'); if(b) b.style.display='none'; updateBedStatus(); }
+// ยกเลิกการแก้ไข: ออกจากโหมดแก้ไข ซ่อนแถบ และล้างฟอร์มให้พร้อมลงทะเบียนรายใหม่
+function cancelEditAdmit(){
+  window._editAdmitMode=false; window._editAdmitId=null;
+  hideEditBanner();
+  resetRegisterForm();
+}
+/* ===== จำกัดเตียง: รับใหม่ได้เมื่อมีผู้ป่วยนอนอยู่ไม่ถึง 8 ราย ===== */
+const MAX_BEDS = 8;
+let _bedCheckTimeoutMs = 8000;
+let _bedPopupLastAt = 0;
+let _bedFocusChecking = false;
+function admittedCount(list){ return (list||patients).filter(x=>x.status==='admitted').length; }
+function bedsFull(){ return admittedCount() >= MAX_BEDS; }
+function updateBedStatus(){
+  const el=document.getElementById('bed-status'); if(!el) return;
+  const n=admittedCount();
+  el.style.display='';
+  if(n===MAX_BEDS-1){
+    el.className='field bed-status warn';
+    el.innerHTML='<div>🟠 เตียงเหลือ 1 เตียง ('+n+'/'+MAX_BEDS+')</div>';
+  } else {
+    // ว่างพอ หรือเต็ม: ไม่แสดงแถบ (ตอนเต็มแจ้งด้วยป๊อปอัปแทน)
+    el.className='field bed-status';
+    el.innerHTML='';
+    el.style.display='none';
+  }
+  if(typeof checkRegisterReady==='function') checkRegisterReady();
+}
+// ถามเซิร์ฟเวอร์ตอนนี้ว่ามีผู้ป่วยกี่ราย (คืน null ถ้าติดต่อไม่ได้)
+async function fetchLatestPatients(){
+  const url=window._GAS_URL;
+  if(!url) return patients.slice();                 // โหมดไม่มีเซิร์ฟเวอร์: ใช้ข้อมูลในเครื่อง
+  const ctrl=new AbortController();
+  const timer=setTimeout(()=>ctrl.abort(), _bedCheckTimeoutMs);
+  try{
+    const res=await fetch(url+'?action=load&t='+Date.now(), {signal:ctrl.signal});
+    const data=await res.json();
+    return (data&&data.ok&&Array.isArray(data.patients)) ? data.patients : null;
+  }catch(e){ return null; }
+  finally{ clearTimeout(timer); }
+}
+function showBedsFullPopup(n){
+  _bedPopupLastAt=Date.now();
+  const m=document.getElementById('beds-msg');
+  if(m) m.innerHTML='<div style="font-size:22px">เตียงเต็ม ('+n+'/'+MAX_BEDS+')</div>'
+    +'<div style="font-size:15px;margin-top:6px">ต้องจำหน่าย/ย้ายผู้ป่วยรายเดิมก่อน<br>จึงจะรับรายใหม่ได้</div>';
+  const o=document.getElementById('modal-beds'); if(o) o.style.display='flex';
+}
+// แตะช่องกรอกในฟอร์มลงทะเบียนตอนเตียงเต็ม -> ป๊อปอัปขึ้นเลย ไม่ต้องกรอกจนถึงปุ่มล่างสุด
+document.getElementById('tab-register').addEventListener('focusin', async function(e){
+  const t=e.target;
+  if(!t) return;
+  const isField = t.tagName==='TEXTAREA' || (t.tagName==='INPUT' && !['checkbox','radio','button','submit'].includes(t.type));
+  if(!isField || window._editAdmitMode) return;
+  if(!bedsFull() || _bedFocusChecking) return;               // ในเครื่องเห็นว่ายังไม่เต็ม -> ไม่รบกวน (ปุ่มลงทะเบียนยังตรวจกับเซิร์ฟเวอร์อีกรอบ)
+  if(Date.now()-_bedPopupLastAt < 30000) return;             // เพิ่งเตือนไป ไม่เตือนซ้ำรัวๆ
+  _bedFocusChecking=true;
+  try{
+    const latest=await fetchLatestPatients();
+    if(!latest) return;                                      // ติดต่อเซิร์ฟเวอร์ไม่ได้: ไม่รบกวนตอนแตะช่อง
+    if(latest.length>=patients.length){
+      patients=latest;
+      try{ localStorage.setItem('rcu1_patients_bak', JSON.stringify(patients)); }catch(err){}
+      renderList(); renderDash();
+    }
+    updateCensus();
+    const n=Math.max(admittedCount(latest), admittedCount());
+    if(n>=MAX_BEDS && !window._editAdmitMode){
+      if(document.activeElement && document.activeElement.blur) document.activeElement.blur();   // ไม่ให้คีย์บอร์ดเด้งค้าง
+      showBedsFullPopup(n);
+    }
+  } finally { _bedFocusChecking=false; }
+});
+function _runRegister(btn){
+  // ตัวกันกดซ้ำเดิมไม่เคยถูกปลดหลังแก้ไขสำเร็จ/ตรวจไม่ผ่าน ทำให้ปุ่มเงียบไป จึงปลดทั้งก่อนและหลัง (doRegister ทำงานแบบ sync)
+  if(btn) btn.dataset.submitting='';
+  try{ doRegister(); } finally { if(btn) btn.dataset.submitting=''; }
+}
+async function guardedRegister(){
+  const btn=document.getElementById('btn-register');
+  if(btn && btn.dataset.checking==='1') return;
+  if(window._editAdmitMode){ _runRegister(btn); return; }   // แก้ไขข้อมูล: ไม่จำกัดเตียง ไม่ต้องตรวจเซิร์ฟเวอร์
+  const label = btn ? btn.textContent : '';
+  if(btn){ btn.dataset.checking='1'; btn.disabled=true; btn.textContent='⏳ กำลังตรวจจำนวนเตียงจากเซิร์ฟเวอร์...'; }
+  const latest = await fetchLatestPatients();
+  if(btn){ btn.dataset.checking=''; btn.textContent=label; }
+  if(!latest){
+    checkRegisterReady();
+    showError('ตรวจจำนวนเตียงจากเซิร์ฟเวอร์ไม่ได้ จึงยังรับผู้ป่วยไม่ได้\nตรวจสอบอินเทอร์เน็ตแล้วกดลงทะเบียนอีกครั้ง');
+    return;
+  }
+  // ปรับข้อมูลในเครื่องให้ตรงเซิร์ฟเวอร์ (กติกาเดียวกับการรีเฟรชทุก 60 วินาที) ก่อนนับ
+  if(latest.length >= patients.length){
+    patients = latest;
+    try{ localStorage.setItem('rcu1_patients_bak', JSON.stringify(patients)); }catch(e){}
+    renderList(); renderDash();
+  }
+  updateCensus();
+  const n=Math.max(admittedCount(latest), admittedCount());
+  if(n >= MAX_BEDS){
+    checkRegisterReady();
+    showBedsFullPopup(n);
+    return;
+  }
+  _runRegister(btn);
+}
+function updateCensus(){document.getElementById('census-num').textContent=patients.filter(p=>p.status==='admitted').length;updateBedStatus();}
 
 const RISK_LIST=['Fall','Pressure Injury','Infection','DVT','อื่นๆ'];
 function calcCurrentLOS(p){
@@ -1453,7 +1647,7 @@ function _doRenderList(){
       onmouseleave="this.style.background='${bg}'">
       <span style="color:var(--blue);font-size:var(--fs-sm);font-weight:700;font-family:"IBM Plex Mono",'IBM Plex Mono'">${p.hn}</span>
       <div>
-        <div style="color:var(--text);font-size:var(--fs-sm);font-weight:600">${p.name}</div>
+        <div style="color:var(--text);font-size:var(--fs-sm);font-weight:600">${p.name}${p.fastPass?'<span class="fp-stamp-sm">FAST PASS</span>':''}</div>
         <div style="color:var(--muted);font-size:var(--fs-xs);margin-top:1px">${p.diagnosis}</div>
       </div>
       <div style="text-align:center">
@@ -1486,6 +1680,7 @@ function showDetail(id){
 
     ['Diagnosis',diagLabel(p.diagnosis,p.diagSpec)],
   ];
+  if(p.fastPass) rows.splice(2,0,['Fast Pass','__RED__FAST PASS']);
   if(p.status!=='admitted'){
     const losVal=p.los??0;
     const losMon=Math.floor(losVal/30);
@@ -1531,6 +1726,12 @@ function showDetail(id){
   const akiHistDisplay = buildAKIHistHtml(p);
 
   const riskHtml=`
+  <div style="margin-top:10px;border-top:1px solid #a0b4d0;padding-top:10px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <span style="color:#d50000;font-size:11px;font-weight:700;letter-spacing:.8px">🚨 FAST PASS</span>
+      <button type="button" class="fp-btn ${p.fastPass?'on':''}" onclick="toggleFastPassPatient(${id})">${p.fastPass?'FAST PASS ✓ (กดเพื่อถอด)':'+ ติดตรา FAST PASS'}</button>
+    </div>
+  </div>
   <div style="margin-top:10px;border-top:1px solid #a0b4d0;padding-top:10px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
       <span style="color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase">⚠️ ความเสี่ยง</span>
@@ -2107,6 +2308,7 @@ function editAdmitPatient(id){
   // เติมข้อมูลเดิมลงในฟอร์มลงทะเบียน
   window._editAdmitMode = true;
   window._editAdmitId = id;
+  showEditBanner(p);
   // ใช้ ID ที่ถูกต้องตามฟอร์มจริง
   const setVal = (id, val) => { const el=document.getElementById(id); if(el) el.value=val||''; };
   setVal('r-name', p.name);
@@ -2121,7 +2323,9 @@ function editAdmitPatient(id){
   setVal('r-time', p.admitTime);
   setVal('r-diag', p.diagnosis);
   setVal('r-diag-spec', p.diagSpec);
+  setVal('r-type', p.patientType);
   setVal('r-oxy', p.oxy);
+  setFastPassForm(!!p.fastPass);
   if(typeof toggleSourceDept==='function') toggleSourceDept();
   if(typeof toggleOxySpec==='function') toggleOxySpec();
   // โหลด on F/C
@@ -3267,7 +3471,7 @@ function buildMonthPayload(y,m){
     var losVal=p.los!=null?p.los:(p.status==='admitted'?calcLOS(p.admitDate,today()):'');
     var pIsDKA=!!(p.isDKA);
     var _fcCols=(function(){var hist=p.fcHistory&&p.fcHistory.length?p.fcHistory:(p.onFC==='yes'?[{onDate:p.onfcDate||'',onFrom:(p.onfcFrom||'')+(p.onfcSpec?' ('+p.onfcSpec+')':''),onNote:p.onfcNote||'',offDate:p.offFC==='yes'?p.offfcDate||'':'',offNote:p.offFC==='yes'?p.offfcNote||'':''}]:[]);if(p.onFC==='no')return['ไม่','','','','',''];if(!hist.length)return['—','','','','',''];var lines=hist.map(function(fc){return{on:'ใช่',onDate:fc.onDate||'',onFrom:(fc.onFrom||'')+(fc.onSpec?' ('+fc.onSpec+')':''),off:fc.offDate?'ใช่':'ยังไม่ off',offDate:fc.offDate||'',offNote:fc.offNote||''};});if(lines.length===1)return[lines[0].on,lines[0].onDate,lines[0].onFrom,lines[0].off,lines[0].offDate,lines[0].offNote];return[lines.map(function(l,i){return'#'+(i+1)+':'+l.on;}).join('\n'),lines.map(function(l,i){return'#'+(i+1)+':'+l.onDate;}).join('\n'),lines.map(function(l,i){return'#'+(i+1)+':'+l.onFrom;}).join('\n'),lines.map(function(l,i){return'#'+(i+1)+':'+l.off;}).join('\n'),lines.map(function(l,i){return'#'+(i+1)+':'+l.offDate;}).join('\n'),lines.map(function(l,i){return'#'+(i+1)+':'+l.offNote;}).join('\n')];})();
-    ptRows.push([i+1,p.name+(isCarried?' ★ยกมา':''),p.hn,p.an||'',Number(p.age)||p.age,p.gender,p.right,(p.source||'')+(p.sourceDept?' - '+p.sourceDept:''),p.patientType,diagLabel(p.diagnosis,p.diagSpec),p.saps3||'',p.newsScore||'',p.akiStage>0?'Stage '+p.akiStage:'',p.akiBaseline||'',p.akiCurrent||'',p.akiKRT==='yes'?'KRT':'',p.admitDate,p.admitTime||'',(p.oxy||'')+(p.oxySpec?' ('+p.oxySpec+')':''),p.onTubeDate||'',p.offTubeDate||'',p.trachDate||'',risks,procs,_fcCols[0],_fcCols[1],_fcCols[2],_fcCols[3],_fcCols[4],_fcCols[5],p.status==='admitted'?'Admit':'D/C',p.dischargeDate||'',p.dischargeTime||'',p.dcType||'',dcDest,diagLabel(p.finalDiag||'',p.finalDiagSpec),losVal,p.summary||'',yn(qi.vs),yn(qi.sepsis),yn(qi.aki),yn(qi.shock),yn(qi.readmit),yn(qi.tube),yn(qi.wean_protocol),yn(qi.wean_success),yn(qi.retube_24),yn(qi.retube_72),yn(qi.cpr),yn(qi.cpr_rosc),yn(qi.cpr_survive24),yn(qi.cpr_unplanned),yn(qi.nr),pIsDKA?yn(qi.dka_bs):'N/A',pIsDKA?yn(qi.dka_k):'N/A',pIsDKA?yn(qi.dka_arr):'N/A']);
+    ptRows.push([i+1,p.name+(isCarried?' ★ยกมา':''),p.hn,p.an||'',Number(p.age)||p.age,p.gender,p.right,(p.source||'')+(p.sourceDept?' - '+p.sourceDept:'')+(p.fastPass?((p.source||p.sourceDept)?' · ':'')+'FAST PASS':''),p.patientType,diagLabel(p.diagnosis,p.diagSpec),p.saps3||'',p.newsScore||'',p.akiStage>0?'Stage '+p.akiStage:'',p.akiBaseline||'',p.akiCurrent||'',p.akiKRT==='yes'?'KRT':'',p.admitDate,p.admitTime||'',(p.oxy||'')+(p.oxySpec?' ('+p.oxySpec+')':''),p.onTubeDate||'',p.offTubeDate||'',p.trachDate||'',risks,procs,_fcCols[0],_fcCols[1],_fcCols[2],_fcCols[3],_fcCols[4],_fcCols[5],p.status==='admitted'?'Admit':'D/C',p.dischargeDate||'',p.dischargeTime||'',p.dcType||'',dcDest,diagLabel(p.finalDiag||'',p.finalDiagSpec),losVal,p.summary||'',yn(qi.vs),yn(qi.sepsis),yn(qi.aki),yn(qi.shock),yn(qi.readmit),yn(qi.tube),yn(qi.wean_protocol),yn(qi.wean_success),yn(qi.retube_24),yn(qi.retube_72),yn(qi.cpr),yn(qi.cpr_rosc),yn(qi.cpr_survive24),yn(qi.cpr_unplanned),yn(qi.nr),pIsDKA?yn(qi.dka_bs):'N/A',pIsDKA?yn(qi.dka_k):'N/A',pIsDKA?yn(qi.dka_arr):'N/A']);
   });
   return {monthName,yearTH,month:m,year:y,days,startDate,
     stats:{prevAdmitted,admitted,census,discharged,refers,transfers,deaths,nrC,cprC,refusedC,weanOk,weanFail,totalLOS,erAdmits,wardAdmits,mortality,occupancy,avgTrans,avgER},
@@ -3505,8 +3709,9 @@ function addMonthSheet(wb,payload){
     row.forEach(function(v,c){
       var isNA=(v===null||v===undefined||v==='N/A');
       var isY=(v==='✓'); var isN=(v==='✗');
+      var isFP=(c===7&&typeof v==='string'&&v.indexOf('FAST PASS')>=0);
       sc(rp,c,isNA?'':v,{
-        font:F(isNA?C.muted:isY?C.valGreen:isN?C.red:tc,isY,10),
+        font:F(isNA?C.muted:isY?C.valGreen:isN?C.red:isFP?C.red:tc,isY||isFP,10),
         fill:BG(isNA?C.bgWhite:isY?'FFE8F8EE':bg),
         alignment:AL(c===0||c>=10&&c<=15||c>=21&&c<=27?'center':'left','center',c===1||c===28),
         border:BD('FFBDD0E8')
