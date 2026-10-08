@@ -85,6 +85,7 @@
   .btn-swap{background:#fff;border:1.5px solid var(--danger);color:var(--danger);font-weight:700;font-size:.68rem;padding:3px;border-radius:6px;width:100%;height:100%;cursor:pointer;align-self:stretch;}
   .btn-swap:active{background:#fdece7;}
   .btn-swap.pending{background:transparent;color:var(--ok);border-color:var(--ok);}
+.btn-swap.wide{grid-column:1 / -1;height:auto;min-height:38px;}
   .name-cell.changed-name{color:var(--danger) !important;}
   .history-table{width:100%;border-collapse:collapse;font-size:.78rem;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(13,59,140,.06);}
   .history-table th{background:var(--sky);color:var(--navy-deep);padding:7px 6px;font-size:.7rem;}
@@ -305,6 +306,8 @@ const ROLES = ["Incharge","Member1","Member2","Member3"];
 const ROLE_LABELS = { Incharge:"Incharge", Member1:"Member 1", Member2:"Member 2", Member3:"Member 3" };
 const FIXED_KEYS = ["housekeeper"];
 const FIXED_LABELS = { housekeeper:"แม่บ้าน" };
+const FIXED_RESTRICT = { housekeeper: ["เช้า"] };   // แม่บ้านมีเฉพาะเวรเช้า (ดึก/บ่าย ไม่มี)
+function fixedAppliesTo(key, shift){ const r=FIXED_RESTRICT[key]; return !r || r.includes(shift); }
 const WORK_ONLY_KEYS = ["clerk","na","worker"];
 const WORK_ONLY_LABELS = { clerk:"เสมียน", na:"NA", worker:"คนงาน" };
 const WORK_ONLY_RESTRICT = { clerk: ["เช้า"] }; // only shows on this shift; keys absent here show every shift
@@ -454,11 +457,13 @@ function renderAssignDays(){
           <select class="role-select" data-day="${d}" data-shift="${shift}" data-gi="${gi}">${buildOptions(ROSTER_RN, g.name)}</select></div>`;
       });
       FIXED_KEYS.forEach(key=>{
+        if(!fixedAppliesTo(key, shift)) return;
         html += `<div class="role-item"><label>${FIXED_LABELS[key]}</label>
           <select class="fixed-select" data-day="${d}" data-shift="${shift}" data-key="${key}">${buildOptions(ROSTER_RN, rec[key].name)}</select></div>`;
       });
       const btnLabel = rec.pendingSwap ? "✅ Commit" : "🔁 เปลี่ยนเวร";
-      html += `<button class="btn-swap${rec.pendingSwap?" pending":""}" data-day="${d}" data-shift="${shift}">${btnLabel}</button>`;
+      const hasFixedBox = FIXED_KEYS.some(k=>fixedAppliesTo(k, shift));
+      html += `<button class="btn-swap${rec.pendingSwap?" pending":""}${hasFixedBox?"":" wide"}" data-day="${d}" data-shift="${shift}">${btnLabel}</button>`;
       html += `</div></div>`;
     });
     html += `</div>`;
@@ -1001,7 +1006,7 @@ function buildAssignReportHtml(){
         const val = escapeHtml(g.name) || "-";
         html += `<td>${chg ? `<span class="chg">${val}</span>` : val}</td>`;
       });
-      html += `<td>${escapeHtml(rec.housekeeper.name) || "-"}</td></tr>`;
+      html += `<td>${fixedAppliesTo("housekeeper", shift) ? (escapeHtml(rec.housekeeper.name) || "-") : "-"}</td></tr>`;
     });
   }
   html += `</table>`;
