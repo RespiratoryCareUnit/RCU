@@ -1149,8 +1149,57 @@ let loadedKey = "";
 /* โหลดเดือนนี้จากส่วนกลางสำเร็จหรือยัง ถ้ายัง = ห้ามบันทึก (กันเขียนทับข้อมูลจริงด้วยตารางว่าง) */
 let loadOk = false;
 let loadingNow = false;
+let lastLoadError = null;
 let switchSeq = 0;
 let cloudTimer = null, cloudDirty = false;
+
+
+/* ---- บีบอัดข้อมูลก่อนเก็บ: เซลล์ Google Sheets เก็บได้ไม่เกิน 50,000 ตัวอักษร แต่ข้อมูลหนึ่งเดือนดิบๆ เกิน 70,000 ---- */
+const CELL_LIMIT = 45000;                                  // เผื่อไว้ต่ำกว่าเพดานจริง 50,000
+function loadPako(){
+  return new Promise((res, rej)=>{
+    if(window.pako) return res(window.pako);
+    const s = document.createElement("script");
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js";
+    s.onload = ()=> window.pako ? res(window.pako) : rej(new Error("โหลดตัวบีบอัดไม่สำเร็จ"));
+    s.onerror = ()=> rej(new Error("โหลดตัวบีบอัดไม่สำเร็จ"));
+    document.head.appendChild(s);
+  });
+}
+async function gzipBytes(str){
+  if(typeof CompressionStream !== "undefined"){
+    const cs = new CompressionStream("gzip"), wr = cs.writable.getWriter();
+    wr.write(new TextEncoder().encode(str)); wr.close();
+    return new Uint8Array(await new Response(cs.readable).arrayBuffer());
+  }
+  const pako = await loadPako();                           // เบราว์เซอร์เก่า
+  return pako.gzip(str);
+}
+async function gunzipText(bytes){
+  if(typeof DecompressionStream !== "undefined"){
+    const ds = new DecompressionStream("gzip"), wr = ds.writable.getWriter();
+    wr.write(bytes); wr.close();
+    return await new Response(ds.readable).text();
+  }
+  const pako = await loadPako();
+  return pako.ungzip(bytes, { to:"string" });
+}
+function bytesToB64(bytes){
+  let bin = "";
+  for(let i=0; i<bytes.length; i+=0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i+0x8000));
+  return btoa(bin);
+}
+function b64ToBytes(b64){
+  const bin = atob(b64), out = new Uint8Array(bin.length);
+  for(let i=0; i<bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+async function packData(obj){ return { z: "gz1:" + bytesToB64(await gzipBytes(JSON.stringify(obj))) }; }
+async function unpackData(d){
+  if(d && typeof d.z === "string" && d.z.indexOf("gz1:") === 0)
+    return JSON.parse(await gunzipText(b64ToBytes(d.z.slice(4))));
+  return d;                                                // ข้อมูลรุ่นเก่าที่ยังไม่บีบอัด
+}
 
 function applyLoadedMonth(d){
   assign = d.assign;
@@ -1172,9 +1221,13 @@ async function loadMonth(key){
   try{
     const res = await fetch(`${CLOUD_URL}?kind=${CLOUD_KIND}&date=${key}&pw=${encodeURIComponent(AUTH_PW)}`);
     const j = await res.json();
-    if(!j.ok) return { ok:false, error: j.error || "โหลดไม่สำเร็จ" };
-    const d = j.data || {};
-    return { ok:true, found:!!d.assign, data:d };
+    if(!j.ok){
+      const msg = String(j.error || "โหลดไม่สำเร็จ");
+      // เซิร์ฟเวอร์อ่านข้อมูลของเดือนนี้ไม่ได้เพราะข้อความในชีทถูกตัดกลางคัน (เกินเพดานเซลล์)
+      return { ok:false, error: msg, corrupt: /SyntaxError|JSON/i.test(msg) };
+    }
+    const data = await unpackData(j.data || {});
+    return { ok:true, found:!!(data && data.assign), data };
   }catch(err){
     return { ok:false, error: String(err.message || err) };
   }
@@ -1192,10 +1245,13 @@ async function cloudSave(){
       rosterNA: document.getElementById("roster-na").value,
       rosterWK: document.getElementById("roster-wk").value
     };
+    const packed = await packData(payload);
+    const size = JSON.stringify(packed).length;
+    if(size > CELL_LIMIT) throw new Error(`ข้อมูลเดือนนี้ใหญ่เกินที่เก็บได้ (${size.toLocaleString()} ตัวอักษร)`);
     const res = await fetch(CLOUD_URL, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ pw: AUTH_PW, kind: CLOUD_KIND, date: key, data: payload })
+      body: JSON.stringify({ pw: AUTH_PW, kind: CLOUD_KIND, date: key, data: packed })
     });
     const j = await res.json();
     if(!j.ok) throw new Error(j.error || "บันทึกไม่สำเร็จ");
@@ -1259,14 +1315,15 @@ async function switchToMonth(yBE, mIdx, day){
   const r = await loadMonth(key);
   if(seq !== switchSeq) return;                       // มีการเปลี่ยนเดือนซ้อนเข้ามา ทิ้งผลนี้
 
-  loadingNow = false;
+  loadingNow = false; lastLoadError = null;
   if(r.ok){
     if(r.found){ applyLoadedMonth(r.data); setSync(`โหลดเดือน ${getMonthLabel()} แล้ว — ${new Date().toLocaleTimeString("th-TH")}`, "ok"); }
     else { setSync(`ยังไม่มีข้อมูลของ ${getMonthLabel()} ในส่วนกลาง`, "ok"); }
     loadedKey = key; loadOk = true;
   } else {
-    loadedKey = key; loadOk = false;
-    setSync(`โหลด ${getMonthLabel()} ไม่สำเร็จ: ${r.error} — ยังไม่บันทึก แตะที่นี่เพื่อลองใหม่`, "bad");
+    loadedKey = key; loadOk = false; lastLoadError = r;
+    if(r.corrupt) setSync(`ข้อมูล ${getMonthLabel()} ในส่วนกลางเสียหาย อ่านไม่ได้ — แตะที่นี่เพื่อล้างและเริ่มเดือนนี้ใหม่`, "bad");
+    else setSync(`โหลด ${getMonthLabel()} ไม่สำเร็จ: ${r.error} — ยังไม่บันทึก แตะที่นี่เพื่อลองใหม่`, "bad");
   }
   goToDay(day || defaultDayFor(yBE, mIdx));
 }
@@ -1289,8 +1346,26 @@ document.getElementById("date-pick").addEventListener("change", (e)=>{
   else switchToMonth(yBE, mIdx, dd);
 });
 // โหลดไม่สำเร็จ: แตะแถบสถานะเพื่อลองใหม่
+async function resetDamagedMonth(){
+  const key = loadedKey, label = getMonthLabel();
+  if(!key) return;
+  if(!confirm(`ข้อมูล ${label} ในส่วนกลางเสียหาย (ถูกตัดกลางคัน) อ่านกลับมาไม่ได้\n\nล้างข้อมูลเดือนนี้แล้วเริ่มใหม่หรือไม่?\n(ข้อมูลเดือนอื่นไม่ถูกแตะ)`)) return;
+  setSync("กำลังล้างข้อมูลที่เสียหาย...", "busy");
+  try{
+    const res = await fetch(CLOUD_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ pw: AUTH_PW, kind: CLOUD_KIND, date: key, data: {} })
+    });
+    const j = await res.json();
+    if(!j.ok) throw new Error(j.error || "ล้างไม่สำเร็จ");
+  }catch(err){ setSync("ล้างข้อมูลไม่สำเร็จ: " + (err.message || err), "bad"); return; }
+  switchToMonth(currentYBE(), currentMIdx());
+}
 document.getElementById("sync-status").addEventListener("click", ()=>{
-  if(!loadOk && !loadingNow) switchToMonth(currentYBE(), currentMIdx());
+  if(loadOk || loadingNow) return;
+  if(lastLoadError && lastLoadError.corrupt) resetDamagedMonth();
+  else switchToMonth(currentYBE(), currentMIdx());
 });
 
 // เปิดหน้า: เดือนปัจจุบัน และพาไปวันนี้
