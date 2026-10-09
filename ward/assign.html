@@ -53,8 +53,14 @@
 
   nav.tabs{display:flex;background:#fff;border-bottom:2px solid var(--line);position:sticky;top:0;z-index:6;}
   .syncbar{background:#eef3fb;border-bottom:1px solid var(--line);padding:6px 14px;text-align:center;}
-  #sync-status{font-size:.7rem;color:#5a6a86;}
-  #sync-status.ok{color:#14653a;} #sync-status.bad{color:#b9432f;} #sync-status.busy{color:#8a6d1f;}
+  /* แถบสถานะติดล่างจอเสมอ เลื่อนไปไหนก็เห็นว่าบันทึกแล้วหรือยัง */
+  #sync-status{position:fixed;left:0;right:0;bottom:0;z-index:60;display:block;margin:0;
+    padding:11px 14px calc(11px + env(safe-area-inset-bottom, 0px));font-size:.86rem;font-weight:700;line-height:1.35;
+    text-align:center;background:#eef2f8;color:#3a4a66;border-top:2px solid #cfd8e6;box-shadow:0 -2px 10px rgba(0,0,0,.10);}
+  #sync-status.ok{background:#e3f4e8;color:#14653a;border-top-color:#7cc792;}
+  #sync-status.bad{background:#fdeaea;color:#b9432f;border-top-color:#e89a8f;}
+  #sync-status.busy{background:#fff6dc;color:#8a6d1f;border-top-color:#eccb6e;}
+  body{padding-bottom:72px;}
   nav.tabs button{flex:1;padding:10px 2px;background:none;border:none;font-size:.72rem;font-weight:600;color:#7a8399;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;}
   nav.tabs button.active{color:var(--navy);border-bottom-color:var(--navy);}
 
@@ -1137,7 +1143,10 @@ function monthKey(){
   const m = String(parseInt(document.getElementById("month-select").value) + 1).padStart(2,"0");
   return `${document.getElementById("year-input").value}-${m}`;
 }
-function keyFor(yBE, mIdx){ return `${yBE}-${String(mIdx+1).padStart(2,"0")}`; }
+// ชีทแปลงข้อความแบบ "2569-10" เป็นวันที่เอง ทำให้หาแถวเดิมไม่เจอตอนโหลดกลับ จึงเติมตัว M นำหน้า (ชีทจะเก็บเป็นข้อความ)
+function keyFor(yBE, mIdx){ return `M${yBE}-${String(mIdx+1).padStart(2,"0")}`; }
+function legacyKeyFor(yBE, mIdx){ return `${yBE}-${String(mIdx+1).padStart(2,"0")}`; }   // รหัสแบบเดิม (อ่านอย่างเดียว)
+function labelOfKey(key){ const [yy, mm] = String(key).replace(/^[^0-9]+/, "").split("-"); return `${MONTH_NAMES[parseInt(mm)-1]} ${yy}`; }
 function daysInMonthBE(yBE, mIdx){ return new Date(yBE - 543, mIdx + 1, 0).getDate(); }
 function isoOf(yBE, mIdx, d){ return `${yBE-543}-${String(mIdx+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`; }
 function setSync(msg, cls){
@@ -1241,7 +1250,7 @@ let lastEditT = 0;
 function localAll(){ try{ return JSON.parse(localStorage.getItem(LOCAL_KEY) || "{}") || {}; }catch(e){ return {}; } }
 function localPut(key, payload, synced){
   const all = localAll();
-  all[key] = { t: Date.now(), synced: !!synced, data: payload };
+  all[key] = { t: Date.now(), synced: !!synced, data: payload, base: monthBase };
   Object.keys(all).sort((a,b)=> all[b].t - all[a].t).slice(4).forEach(k=> delete all[k]);   // เก็บแค่ 4 เดือนล่าสุด
   try{ localStorage.setItem(LOCAL_KEY, JSON.stringify(all)); return true; }
   catch(e){
@@ -1263,14 +1272,52 @@ function currentPayload(){
   };
 }
 
+/* ===== รวมข้อมูลสามทาง: ช่องที่เครื่องนี้แก้ (ต่างจากฉบับตั้งต้น) ใช้ของเครื่องนี้ ช่องอื่นใช้ของส่วนกลาง ===== */
+let monthBase = null;                 // หน้าตาเดือนนี้ตอนตรงกับส่วนกลางล่าสุด
+let saving = false, saveAgain = false;
+function isObj(v){ return v && typeof v === "object" && !Array.isArray(v); }
+function merge3(base, local, server){
+  if(isObj(local) && isObj(server)){
+    const out = {};
+    const keys = new Set([...Object.keys(server), ...Object.keys(local), ...(isObj(base) ? Object.keys(base) : [])]);
+    keys.forEach(k=>{ const v = merge3(isObj(base) ? base[k] : undefined, local[k], server[k]); if(v !== undefined) out[k] = v; });
+    return out;
+  }
+  return JSON.stringify(local) !== JSON.stringify(base) ? local : server;
+}
+// เติมวัน/เวรที่ขาดแบบเดียวกับหน้าจอ เพื่อให้เทียบกับข้อมูลในเครื่องได้ตรง
+function normalizeMonthData(d){
+  const keepA = assign, keepN = NUM_DAYS;
+  try{
+    assign = (d && d.assign) || {};
+    NUM_DAYS = parseInt(d && d.numDays) || NUM_DAYS;
+    ensureAssignDays();
+    return { assign, changeLog: (d && d.changeLog) || [], numDays: d && d.numDays,
+             rosterRN: d && d.rosterRN, rosterNA: d && d.rosterNA, rosterWK: d && d.rosterWK };
+  } finally { assign = keepA; NUM_DAYS = keepN; }
+}
+function hasFocusInData(){
+  const a = document.activeElement;
+  return !!(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.closest && a.closest("#assign-days, #work-days"));
+}
+
 async function cloudSave(){
   if(!authed() || !loadedKey || !loadOk) return;
+  if(saving){ saveAgain = true; return; }
+  saving = true;
   const key = loadedKey;
-  setSync("กำลังบันทึกขึ้นส่วนกลาง...", "busy");
+  setSync("กำลังบันทึก… (อย่าเพิ่งปิดหน้า)", "busy");
   try{
     const snapT = lastEditT;
-    const payload = currentPayload();
-    const packed = await packData(payload);
+    const baseStr = monthBase;
+    const snapStr = JSON.stringify(currentPayload()), snap = JSON.parse(snapStr);
+    // 1) อ่านฉบับล่าสุดจากส่วนกลาง แล้วรวมเฉพาะช่องที่เครื่องนี้แก้
+    const srv = await loadMonth(key);
+    if(!srv.ok) throw new Error(srv.error || "อ่านข้อมูลล่าสุดไม่สำเร็จ");
+    const merged = (srv.found && baseStr) ? merge3(JSON.parse(baseStr), snap, normalizeMonthData(srv.data)) : snap;
+    const mergedStr = JSON.stringify(merged);
+    // 2) ส่ง
+    const packed = await packData(merged);
     const size = JSON.stringify(packed).length;
     if(size > CELL_LIMIT) throw new Error(`ข้อมูลเดือนนี้ใหญ่เกินที่เก็บได้ (${size.toLocaleString()} ตัวอักษร)`);
     const res = await fetch(CLOUD_URL, {
@@ -1280,17 +1327,62 @@ async function cloudSave(){
     });
     const j = await res.json();
     if(!j.ok) throw new Error(j.error || "บันทึกไม่สำเร็จ");
-    // เช็คว่าอ่านกลับมาได้ตรงกับที่ส่งไปจริง (กันกรณีส่วนกลางรับแล้วแต่เก็บ/อ่านผิด)
+    // 3) อ่านกลับยืนยัน (เทียบกับฉบับที่ส่งจริง ไม่ใช่ของที่อาจถูกแก้ระหว่างส่ง)
     const back = await loadMonth(key);
-    const same = back.ok && back.found && JSON.stringify(back.data.assign) === JSON.stringify(payload.assign);
-    if(!same) throw new Error("ส่งแล้วแต่อ่านกลับมาไม่ตรง ข้อมูลยังเก็บไว้ในเครื่อง (แจ้งผู้ดูแลระบบ)");
-    if(lastEditT === snapT) localMarkSynced(key);                 // ไม่มีการแก้เพิ่มระหว่างส่ง = ตรงกับส่วนกลางแล้ว
-    const [yy, mm] = key.split("-");
-    setSync(`บันทึก ${MONTH_NAMES[parseInt(mm)-1]} ${yy} แล้ว — ${j.at}`, "ok");
+    if(!(back.ok && back.found && JSON.stringify(back.data) === mergedStr)) throw new Error("ส่งแล้วแต่อ่านกลับมาไม่ตรง ข้อมูลยังเก็บไว้ในเครื่อง");
+    if(key !== loadedKey) return;                                   // ผู้ใช้เปลี่ยนเดือนไปแล้ว
+    // 4) ใส่ผลรวมกลับบนจอ (ถ้าพิมพ์เพิ่มระหว่างส่ง วางของใหม่ทับผลรวมอีกที)
+    const curStr = JSON.stringify(currentPayload());
+    const next = curStr !== snapStr ? merge3(snap, JSON.parse(curStr), merged) : merged;
+    if(JSON.stringify(next) !== curStr) applyLoadedMonth(JSON.parse(JSON.stringify(next)));
+    monthBase = mergedStr;
+    if(lastEditT === snapT) localMarkSynced(key);
+    else localPut(key, currentPayload(), false);                     // ยังมีของใหม่ค้าง: จดพร้อมฉบับตั้งต้นใหม่
+    setSync(`✓ บันทึกเรียบร้อย ${labelOfKey(key)} — ทุกเครื่องเห็นแล้ว (${j.at})`, "ok");
+    if(baseStr) setTimeout(()=> recheckMonth(key, baseStr, snapStr, mergedStr), 4000);
   }catch(err){
-    setSync("บันทึกไม่สำเร็จ: " + (err.message || err), "bad");
+    setSync("⚠ ยังไม่ขึ้นส่วนกลาง: " + (err.message || err) + " — ข้อมูลเก็บในเครื่องแล้ว จะส่งให้อีกครั้งอัตโนมัติ", "bad");
+  }finally{
+    saving = false;
+    if(saveAgain){ saveAgain = false; cloudSave(); }
   }
 }
+/* สองเครื่องบันทึกเดือนเดียวกันในวินาทีเดียวกัน เครื่องหลังอาจทับเครื่องแรก:
+   ตรวจซ้ำหลังส่ง ถ้าการแก้ของเครื่องนี้หายไป วางกลับเข้าไปใหม่ (ไม่ทับของเครื่องอื่น) */
+async function recheckMonth(key, baseStr, ownStr, savedStr){
+  try{
+    if(key !== loadedKey || !loadOk) return;
+    const srv = await loadMonth(key);
+    if(!srv.ok || !srv.found) return;
+    const srvN = normalizeMonthData(srv.data), srvStr = JSON.stringify(srvN);
+    if(JSON.stringify(srv.data) === savedStr) return;
+    const need = merge3(JSON.parse(baseStr), JSON.parse(ownStr), srvN);
+    if(JSON.stringify(need) === srvStr) return;                      // การแก้ของเรายังอยู่ครบ
+    const cur = currentPayload();
+    applyLoadedMonth(JSON.parse(JSON.stringify(merge3(JSON.parse(ownStr), cur, need))));
+    monthBase = srvStr;                                              // ส่งใหม่เฉพาะส่วนต่างจากส่วนกลางตอนนี้
+    lastEditT = Date.now();
+    localPut(key, currentPayload(), false);
+    cloudSave();
+  }catch(e){}
+}
+/* ทุก 30 วินาที: มีของค้าง -> ส่ง / ไม่มี -> ดึงเดือนนี้จากส่วนกลาง ให้เห็นสิ่งที่เครื่องอื่นเพิ่งบันทึก (ข้ามถ้ากำลังพิมพ์) */
+let REFRESH_MS = 30000;
+async function refreshMonth(){
+  if(!authed() || !loadOk || !loadedKey || saving || cloudDirty || hasFocusInData()) return;
+  const all = localAll(); if(all[loadedKey] && !all[loadedKey].synced){ cloudSave(); return; }
+  try{
+    const key = loadedKey;
+    const srv = await loadMonth(key);
+    if(!srv.ok || !srv.found || key !== loadedKey || cloudDirty || saving || hasFocusInData()) return;
+    const srvN = normalizeMonthData(srv.data), s = JSON.stringify(srvN);
+    if(s === monthBase) return;
+    applyLoadedMonth(JSON.parse(s));
+    monthBase = JSON.stringify(currentPayload());
+    localPut(key, currentPayload(), true);
+  }catch(e){}
+}
+(function syncLoop(){ setTimeout(async ()=>{ try{ await refreshMonth(); } finally { syncLoop(); } }, REFRESH_MS); })();
 
 const NON_DATA_IDS = ["date-pick","month-select","year-input","jump-select","work-day-input"];
 function scheduleCloudSave(e){
@@ -1302,16 +1394,24 @@ function scheduleCloudSave(e){
   }
   lastEditT = Date.now();
   localPut(loadedKey, currentPayload(), false);          // จดลงเครื่องทันที
+  setSync("กำลังบันทึก… (อย่าเพิ่งปิดหน้า)", "busy");      // ให้เห็นทันทีว่าระบบรับรู้การแก้
   cloudDirty = true;
   clearTimeout(cloudTimer);
-  cloudTimer = setTimeout(()=>{ cloudDirty = false; cloudSave(); }, 1500);
+  cloudTimer = setTimeout(()=>{ cloudDirty = false; cloudSave(); }, 600);
 }
+
+function flushOnLeave(){
+  // ส่งแบบปกติ (มีการรวมกับของเครื่องอื่น) ถ้าส่งไม่ทันก่อนหน้าปิด ข้อมูลยังอยู่ในเครื่อง และถูกรวมแล้วส่งตอนเปิดครั้งหน้า
+  if(!cloudDirty) return;
+  clearTimeout(cloudTimer); cloudDirty = false; cloudSave();
+}
+window.addEventListener("pagehide", flushOnLeave);
 document.addEventListener("input", scheduleCloudSave);
 document.addEventListener("change", scheduleCloudSave);
 // ปุ่ม "เปลี่ยนเวร / Commit" แก้ข้อมูลด้วยการกดปุ่ม ไม่ใช่การพิมพ์หรือเลือก จึงต้องนับด้วย
 document.addEventListener("click", (e)=>{ if(e.target.closest && e.target.closest(".btn-swap")) scheduleCloudSave(e); });
 document.addEventListener("visibilitychange", ()=>{
-  if(document.visibilityState === "hidden" && cloudDirty){ clearTimeout(cloudTimer); cloudDirty = false; cloudSave(); }
+  if(document.visibilityState === "hidden") flushOnLeave();
 });
 
 function currentYBE(){ return parseInt(document.getElementById("year-input").value); }
@@ -1337,7 +1437,7 @@ async function switchToMonth(yBE, mIdx, day){
   if(cloudDirty && loadedKey && loadOk){ cloudDirty = false; await cloudSave(); } else { cloudDirty = false; }
   if(seq !== switchSeq) return;
 
-  loadingNow = true; loadedKey = ""; loadOk = false;
+  loadingNow = true; loadedKey = ""; loadOk = false; monthBase = null;
   document.body.classList.add("locked-ui");              // ยังไม่โหลดเสร็จ ห้ามพิมพ์ (กันพิมพ์ลงตารางที่จะถูกแทนที่)
   document.getElementById("month-select").value = String(mIdx);
   document.getElementById("year-input").value = String(yBE);
@@ -1347,21 +1447,27 @@ async function switchToMonth(yBE, mIdx, day){
   setSync(`กำลังโหลด ${getMonthLabel()}...`, "busy");
 
   const key = keyFor(yBE, mIdx);
-  const r = await loadMonth(key);
+  let r = await loadMonth(key);
+  if(r.ok && !r.found){                                  // ยังไม่มีในรหัสใหม่: ลองรหัสแบบเดิม
+    const r2 = await loadMonth(legacyKeyFor(yBE, mIdx));
+    if(r2.ok && r2.found) r = r2;
+  }
   if(seq !== switchSeq) return;                       // มีการเปลี่ยนเดือนซ้อนเข้ามา ทิ้งผลนี้
 
   loadingNow = false; lastLoadError = null;
   if(r.ok){
-    const loc = localAll()[key];
+    const allLoc = localAll();
+    const loc = allLoc[key] || allLoc[legacyKeyFor(yBE, mIdx)];
     const pending = loc && !loc.synced && loc.data && loc.data.assign;    // มีข้อมูลที่แก้ไว้แล้วแต่ยังไม่ขึ้นส่วนกลาง
     if(pending){
       applyLoadedMonth(loc.data);
+      monthBase = loc.base || null;                    // ฉบับตั้งต้นตอนแก้ (ถ้ามี) เพื่อรวมกับของเครื่องอื่นได้ถูก
       loadedKey = key; loadOk = true;
       setSync(`กู้คืนข้อมูล ${getMonthLabel()} ที่ค้างในเครื่อง กำลังส่งขึ้นส่วนกลาง...`, "busy");
       lastEditT = Date.now();
       cloudSave();
-    } else if(r.found){ applyLoadedMonth(r.data); setSync(`โหลดเดือน ${getMonthLabel()} แล้ว — ${new Date().toLocaleTimeString("th-TH")}`, "ok"); }
-    else { setSync(`ยังไม่มีข้อมูลของ ${getMonthLabel()} ในส่วนกลาง`, "ok"); }
+    } else if(r.found){ applyLoadedMonth(r.data); monthBase = JSON.stringify(currentPayload()); setSync(`โหลดเดือน ${getMonthLabel()} แล้ว — ${new Date().toLocaleTimeString("th-TH")}`, "ok"); }
+    else { monthBase = JSON.stringify(currentPayload()); setSync(`ยังไม่มีข้อมูลของ ${getMonthLabel()} ในส่วนกลาง`, "ok"); }
     loadedKey = key; loadOk = true;
     document.body.classList.remove("locked-ui");
   } else {

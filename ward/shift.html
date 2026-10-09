@@ -97,8 +97,12 @@
 
   .note{font-size:.74rem;color:#8a6d1f;background:#fff8e8;border:1px solid #f0dfa8;border-radius:8px;padding:9px 11px;margin-bottom:14px;line-height:1.5;}
   .syncbar{background:#eef3fb;border-bottom:1px solid var(--line);padding:6px 14px;text-align:center;}
-  #sync-status{font-size:.7rem;color:#5a6a86;}
-  #sync-status.ok{color:#14653a;} #sync-status.bad{color:#b9432f;} #sync-status.busy{color:#8a6d1f;}
+  #sync-status{position:fixed;left:0;right:0;bottom:0;z-index:60;display:block;margin:0;
+    padding:11px 14px calc(11px + env(safe-area-inset-bottom, 0px));font-size:.86rem;font-weight:700;line-height:1.35;
+    text-align:center;background:#eef2f8;color:#3a4a66;border-top:2px solid #cfd8e6;box-shadow:0 -2px 10px rgba(0,0,0,.10);}
+  body{padding-bottom:72px;}
+  .syncbar{padding:0;border:0;}
+  #sync-status.ok{background:#e3f4e8;color:#14653a;border-top-color:#7cc792;} #sync-status.bad{background:#fdeaea;color:#b9432f;border-top-color:#e89a8f;} #sync-status.busy{background:#fff6dc;color:#8a6d1f;border-top-color:#eccb6e;}
 
   .prev-overlay{position:fixed;inset:0;z-index:998;background:rgba(0,0,0,.55);
                 display:flex;align-items:center;justify-content:center;padding:6px;}
@@ -431,12 +435,17 @@ const THAI_MONTHS_FULL = ["","มกราคม","กุมภาพันธ�
 let currentShift = "ดึก";
 const INCHARGE_ROSTER = ["ผ่องนภา สงวนสิน","รวิวรรณ ปรียานุภาพ","พนิดา นิติสารวงศ์","กรรณิกา งามลา","มงคล เถื่อนศรี","วรัญญา ศรีทรัพย์พานิช","ลลิดา รู้ด่านกลาง","กันยารัตน์ สินปรุ","เยาวลักษณ์ วายุระกุล","ศรีสุดา มิตรสูงเนิน","อติพร ธรรมดี","นันทวี แสนใจงาม","จิราภรณ์ สุดมี","สุภรัตน์ เฉิดจังหรีด","สุลักษณา อรรถพันธ์กุล","ระพีภัทร ตาเมือง","กมลพรรณ ดุมใหม่"];
 function emptyShift(){ return {}; }
+// วันที่ตามเวลาเครื่อง (ไทย) — toISOString() เป็นเวลาสากล ทำให้ช่วง 00:00–07:00 ได้วันที่ของเมื่อวาน
+function localISO(d){ d = d || new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
 function emptyDay(){ return { shifts: { "ดึก": emptyShift(), "เช้า": emptyShift(), "บ่าย": emptyShift() },
   procState: { "ดึก":"editing", "เช้า":"editing", "บ่าย":"editing" },
   eventState: { "ดึก":"editing", "เช้า":"editing", "บ่าย":"editing" } }; }
 
 const STORE_KEY = "rcu_daily_records_v1";
 let allDays = {};          // allDays["2026-09-01"] = emptyDay()
+// สถานะการส่งขึ้นส่วนกลาง (ต้องประกาศก่อน switchToDate ถูกเรียกตอนเปิดหน้า)
+let baseSnap = {};                                    // หน้าตาของแต่ละวันตอนตรงกับส่วนกลางล่าสุด (ใช้รวมข้อมูลสามทาง)
+const PENDING_KEY = "rcu_daily_pending_v1", IC_PENDING_KEY = "rcu_ic_pending_v1";
 let currentDateKey = "";   // which date is loaded into `data`
 let data = emptyDay();     // the day currently being edited
 
@@ -462,6 +471,7 @@ function switchToDate(dateKey){
   procEditState = data.procState || (data.procState = { "ดึก":"editing", "เช้า":"editing", "บ่าย":"editing" });
   shiftEditState = data.eventState || (data.eventState = { "ดึก":"editing", "เช้า":"editing", "บ่าย":"editing" });
   p4pdEditState = data.p4pdState || (data.p4pdState = { "ดึก":"editing", "เช้า":"editing", "บ่าย":"editing" });
+  if(!pendingAll()[dateKey]) baseSnap[dateKey] = JSON.stringify(data);
 }
 
 function getShiftData(){ return data.shifts[currentShift]; }
@@ -1003,6 +1013,7 @@ function icAll(){
 }
 function icSave(list){
   localStorage.setItem(IC_KEY, JSON.stringify(list));
+  try{ localStorage.setItem("rcu_ic_pending_v1", String(Date.now())); }catch(e){}   // ทะเบียนเชื้อเปลี่ยน รอส่งขึ้นส่วนกลาง
   scheduleCloudSave && scheduleCloudSave();
 }
 function daysBetween(aISO, bISO){
@@ -1564,7 +1575,7 @@ function renderAllForCurrentDay(){
 loadStore();
 {
   const dateInput = document.getElementById("rec-date");
-  dateInput.value = new Date().toISOString().slice(0,10);
+  dateInput.value = localISO();
   switchToDate(dateInput.value);
   renderAllForCurrentDay();
 
@@ -1573,7 +1584,7 @@ loadStore();
     renderAllForCurrentDay();
   });
 
-  const thisMonth = new Date().toISOString().slice(0,7);
+  const thisMonth = localISO().slice(0,7);
   document.getElementById("mr-from").value = thisMonth;
   document.getElementById("mr-to").value = thisMonth;
   const expDate = document.getElementById("exp-date");
@@ -1602,92 +1613,340 @@ function setSync(msg, cls){
   el.className = cls || "";
 }
 
-// pull every day from the sheet and merge in; server wins for days it knows about
+/* ===== รหัสวันในชีท =====
+   ชีทแปลงข้อความ "2026-10-08" เป็นวันที่เอง ทำให้หาแถวเดิมไม่เจอ (เครื่องอื่นไม่เห็น และเพิ่มแถวซ้ำทุกครั้ง) จึงเติม D นำหน้า */
+function cloudDayKey(k){ return "D" + k; }
+const MON3 = {Jan:1,Feb:2,Mar:3,Apr:4,May:5,Jun:6,Jul:7,Aug:8,Sep:9,Oct:10,Nov:11,Dec:12};
+// แปลงรหัสจากชีทกลับเป็น yyyy-mm-dd พร้อมลำดับความเชื่อถือ: รหัสใหม่ > ข้อความแบบเดิม > แถวเดิมที่ถูกแปลงเป็นวันที่ (กู้คืนได้)
+function parseServerDayKey(k){
+  k = String(k);
+  let m = k.match(/^D(\d{4}-\d{2}-\d{2})$/); if(m) return { date:m[1], prio:3 };
+  m = k.match(/^(\d{4}-\d{2}-\d{2})$/); if(m) return { date:m[1], prio:2 };
+  m = k.match(/^[A-Z][a-z]{2} ([A-Z][a-z]{2}) (\d{1,2}) (\d{4})/);          // "Thu Oct 08 2026 00:00:00 GMT+0700 ..."
+  if(m && MON3[m[1]]) return { date:`${m[3]}-${String(MON3[m[1]]).padStart(2,"0")}-${String(m[2]).padStart(2,"0")}`, prio:1 };
+  return null;
+}
+function thaiShortDate(k){ const [y,m,d] = k.split("-").map(Number); return `${d}/${m}/${y+543}`; }
+
+/* ===== บีบอัดเมื่อข้อมูลใหญ่ (เซลล์ชีทเก็บได้ไม่เกิน 50,000 ตัวอักษร) ===== */
+function loadPako(){
+  return new Promise((res, rej)=>{
+    if(window.pako) return res(window.pako);
+    const s = document.createElement("script");
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js";
+    s.onload = ()=> window.pako ? res(window.pako) : rej(new Error("โหลดตัวบีบอัดไม่สำเร็จ"));
+    s.onerror = ()=> rej(new Error("โหลดตัวบีบอัดไม่สำเร็จ"));
+    document.head.appendChild(s);
+  });
+}
+async function gzipBytes(str){
+  if(typeof CompressionStream !== "undefined"){
+    const cs = new CompressionStream("gzip"), wr = cs.writable.getWriter();
+    wr.write(new TextEncoder().encode(str)); wr.close();
+    return new Uint8Array(await new Response(cs.readable).arrayBuffer());
+  }
+  return (await loadPako()).gzip(str);
+}
+async function gunzipText(bytes){
+  if(typeof DecompressionStream !== "undefined"){
+    const ds = new DecompressionStream("gzip"), wr = ds.writable.getWriter();
+    wr.write(bytes); wr.close();
+    return await new Response(ds.readable).text();
+  }
+  return (await loadPako()).ungzip(bytes, { to:"string" });
+}
+function bytesToB64(bytes){ let bin=""; for(let i=0;i<bytes.length;i+=0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i,i+0x8000)); return btoa(bin); }
+function b64ToBytes(b64){ const bin=atob(b64), out=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) out[i]=bin.charCodeAt(i); return out; }
+async function packData(obj){ return { z: "gz1:" + bytesToB64(await gzipBytes(JSON.stringify(obj))) }; }
+async function packIfLarge(obj){ return JSON.stringify(obj).length > 40000 ? packData(obj) : obj; }
+async function unpackData(d){
+  if(d && typeof d.z === "string" && d.z.indexOf("gz1:") === 0) return JSON.parse(await gunzipText(b64ToBytes(d.z.slice(4))));
+  return d;
+}
+
+/* ===== งานที่ค้างส่ง: จดไว้ในเครื่อง ส่งสำเร็จค่อยลบ (ปิดหน้า/เน็ตหลุด ก็ไม่หาย) ===== */
+function pendingAll(){ try{ return JSON.parse(localStorage.getItem(PENDING_KEY) || "{}") || {}; }catch(e){ return {}; } }
+function pendingSave(p){ try{ localStorage.setItem(PENDING_KEY, JSON.stringify(p)); }catch(e){} }
+function pendingMark(k){
+  const p = pendingAll();
+  if(p[k]) p[k].t = Date.now();
+  else p[k] = { t: Date.now(), base: baseSnap[k] || null };
+  pendingSave(p);
+}
+function icPendingT(){ return parseInt(localStorage.getItem(IC_PENDING_KEY) || "0") || 0; }
+
+/* ===== รวมข้อมูลสามทาง: ช่องที่เครื่องนี้แก้ (ต่างจากฉบับตั้งต้น) ใช้ของเครื่องนี้ ช่องอื่นใช้ของส่วนกลาง =====
+   สองคนแก้วันเดียวกันคนละเวร/คนละช่อง จึงไม่ทับกัน */
+function isObj(v){ return v && typeof v === "object" && !Array.isArray(v); }
+function merge3(base, local, server){
+  if(isObj(local) && isObj(server)){
+    const out = {};
+    const keys = new Set([...Object.keys(server), ...Object.keys(local), ...(isObj(base) ? Object.keys(base) : [])]);
+    keys.forEach(k=>{ const v = merge3(isObj(base) ? base[k] : undefined, local[k], server[k]); if(v !== undefined) out[k] = v; });
+    return out;
+  }
+  return JSON.stringify(local) !== JSON.stringify(base) ? local : server;
+}
+// ทะเบียนเชื้อ: รวมสองฝั่งตามรหัสเคส (ไม่มีเคสหาย) เคสที่ปิดแล้วชนะเสมอ
+function mergeCases(server, local, preferLocal){
+  const m = new Map();
+  (server || []).forEach(x=>{ if(x && x.id) m.set(x.id, x); });
+  (local || []).forEach(x=>{
+    if(!x || !x.id) return;
+    const s = m.get(x.id);
+    if(!s) m.set(x.id, x);
+    else if(x.closed && !s.closed) m.set(x.id, x);
+    else if(!x.closed && s.closed) {}
+    else if(preferLocal) m.set(x.id, x);
+  });
+  return [...m.values()];
+}
+
+async function getOne(kind, key){
+  const res = await fetch(`${CLOUD_URL}?kind=${kind}&date=${encodeURIComponent(key)}&pw=${encodeURIComponent(AUTH_PW)}`);
+  const j = await res.json();
+  if(!j.ok) return { ok:false, error: j.error || "อ่านไม่สำเร็จ" };
+  return { ok:true, data: await unpackData(j.data || {}) };
+}
+async function postOne(kind, key, data){
+  const res = await fetch(CLOUD_URL, {
+    method:"POST",
+    headers:{ "Content-Type":"text/plain;charset=utf-8" },      // text/plain เลี่ยง CORS preflight ที่ Apps Script ตอบไม่ได้
+    body: JSON.stringify({ pw: AUTH_PW, kind, date: key, data })
+  });
+  const j = await res.json();
+  if(!j.ok) throw new Error(j.error || "บันทึกไม่สำเร็จ");
+  return j;
+}
+
+// โหลดทุกวันจากส่วนกลาง: วันที่ยังมีงานค้างในเครื่อง ของในเครื่องชนะ (แล้วค่อยส่งขึ้นไปรวม)
 async function cloudLoad(silent){
   if(!authed()) return;
-  setSync("กำลังโหลดจากส่วนกลาง...", "busy");
+  setSync("กำลังโหลดจากส่วนกลาง…", "busy");
   try{
     const res = await fetch(`${CLOUD_URL}?kind=${CLOUD_KIND}&all=1&pw=${encodeURIComponent(AUTH_PW)}`);
     const j = await res.json();
     if(!j.ok) throw new Error(j.error || "โหลดไม่สำเร็จ");
-    const days = j.data || {};
-    let n = 0;
-    Object.keys(days).forEach(k=>{ allDays[k] = days[k]; n++; });
+    const raw = j.data || {};
+    const best = {};
+    Object.keys(raw).forEach(k=>{
+      const info = parseServerDayKey(k); if(!info) return;
+      if(!best[info.date] || info.prio > best[info.date].prio) best[info.date] = { prio: info.prio, data: raw[k] };
+    });
+    const pend = pendingAll();
+    let n = 0, curReplaced = false;
+    for(const d of Object.keys(best)){
+      let rec; try{ rec = await unpackData(best[d].data); }catch(e){ continue; }
+      if(!rec || !rec.shifts) continue;
+      n++;
+      if(pend[d]) continue;
+      allDays[d] = rec; baseSnap[d] = JSON.stringify(rec);
+      if(d === currentDateKey) curReplaced = true;
+    }
+    // ล้างรหัสแปลกที่เคยปนเข้ามาในเครื่องจากรุ่นก่อน
+    Object.keys(allDays).forEach(k=>{
+      if(/^\d{4}-\d{2}-\d{2}$/.test(k)) return;
+      const info = parseServerDayKey(k);
+      if(info && !allDays[info.date]) allDays[info.date] = allDays[k];
+      delete allDays[k];
+    });
+    if(curReplaced){ switchToDate(currentDateKey); renderAllForCurrentDay(); }
     localStorage.setItem(STORE_KEY, JSON.stringify(allDays));
 
-    // ดึงทะเบียนเชื้อจากส่วนกลางด้วย
+    // ทะเบียนเชื้อ: รวมสองฝั่ง ไม่ใช้ทับ
     try{
-      const r2 = await fetch(`${CLOUD_URL}?kind=ic&date=registry&pw=${encodeURIComponent(AUTH_PW)}`);
-      const d2 = await r2.json();
-      if(d2.ok && d2.data && Array.isArray(d2.data.cases)){
-        localStorage.setItem(IC_KEY, JSON.stringify(d2.data.cases));
+      const r = await getOne("ic", "registry");
+      if(r.ok && r.data && Array.isArray(r.data.cases)){
+        const local = icAll();
+        const merged = mergeCases(r.data.cases, local, icPendingT() > 0);
+        if(JSON.stringify(merged) !== JSON.stringify(local)){
+          localStorage.setItem(IC_KEY, JSON.stringify(merged));
+          if(!curReplaced && typeof renderEventsRow === "function") renderEventsRow();
+        }
+        if(JSON.stringify(merged) !== JSON.stringify(r.data.cases) && !icPendingT())
+          localStorage.setItem(IC_PENDING_KEY, String(Date.now()));   // ในเครื่องมีเคสที่ส่วนกลางยังไม่มี
       }
-    }catch(e){ /* โหลดทะเบียนเชื้อไม่ได้ ใช้ของในเครื่องต่อไป */ }
-    // re-open the current date so the screen shows what just arrived
-    switchToDate(currentDateKey);
-    renderAllForCurrentDay();
+    }catch(e){ /* ใช้ทะเบียนในเครื่องต่อไป */ }
+
     setSync(`โหลดแล้ว ${n} วัน — ${new Date().toLocaleTimeString("th-TH")}`, "ok");
+    if(Object.keys(pendingAll()).length || icPendingT()) flushPending(true);
   }catch(err){
-    setSync("โหลดไม่สำเร็จ: " + (err.message || err), "bad");
+    setSync("⚠ โหลดจากส่วนกลางไม่สำเร็จ: " + (err.message || err) + " — ใช้ข้อมูลในเครื่องไปก่อน", "bad");
     if(!silent) showPopup("โหลดข้อมูลจากส่วนกลางไม่สำเร็จ\n" + (err.message || err));
   }
 }
 
-// push the day currently open
-async function cloudSave(silent){
-  if(!authed()) return;
-  setSync("กำลังบันทึกขึ้นส่วนกลาง...", "busy");
-  try{
-    saveStore();
-    const res = await fetch(CLOUD_URL, {
-      method: "POST",
-      // text/plain avoids the CORS preflight that Apps Script cannot answer
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ pw: AUTH_PW, kind: CLOUD_KIND, date: currentDateKey, data: allDays[currentDateKey] || {} })
-    });
-    const j = await res.json();
-    if(!j.ok) throw new Error(j.error || "บันทึกไม่สำเร็จ");
-
-    // ทะเบียนเชื้อเก็บรวมไว้ที่เดียว ไม่ผูกกับวัน จึงส่งเป็นอีกระเบียนหนึ่ง
-    const res2 = await fetch(CLOUD_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ pw: AUTH_PW, kind: "ic", date: "registry", data: { cases: icAll() } })
-    });
-    const j2 = await res2.json();
-    if(!j2.ok) throw new Error(j2.error || "บันทึกทะเบียนเชื้อไม่สำเร็จ");
-
-    setSync(`บันทึกวันที่ ${j.saved} แล้ว — ${j.at}`, "ok");
-  }catch(err){
-    setSync("บันทึกไม่สำเร็จ: " + (err.message || err), "bad");
-    if(!silent) showPopup("บันทึกขึ้นส่วนกลางไม่สำเร็จ\n" + (err.message || err));
+// ส่งหนึ่งวัน: อ่านฉบับล่าสุดจากส่วนกลาง -> รวมสามทาง -> ส่ง -> อ่านกลับยืนยัน
+async function pushDay(k){
+  const p = pendingAll()[k]; if(!p) return null;
+  const t = p.t;
+  if(k === currentDateKey) saveStore();
+  const snapStr = JSON.stringify(allDays[k] || emptyDay()), snap = JSON.parse(snapStr);
+  const srv = await getOne(CLOUD_KIND, cloudDayKey(k));
+  if(!srv.ok) throw new Error(srv.error);
+  const hasSrv = srv.data && srv.data.shifts;
+  const merged = (hasSrv && p.base) ? merge3(JSON.parse(p.base), snap, srv.data) : snap;
+  const mergedStr = JSON.stringify(merged);
+  const j = await postOne(CLOUD_KIND, cloudDayKey(k), await packIfLarge(merged));
+  const back = await getOne(CLOUD_KIND, cloudDayKey(k));
+  if(!back.ok || JSON.stringify(back.data) !== mergedStr) throw new Error("ส่งแล้วแต่อ่านกลับมาไม่ตรง");
+  // ใส่ผลรวมกลับในเครื่อง (ถ้าพิมพ์เพิ่มระหว่างส่ง วางของใหม่ทับผลรวมอีกที)
+  const cur = allDays[k] || snap, curStr = JSON.stringify(cur);
+  const next = curStr !== snapStr ? merge3(snap, cur, merged) : merged;
+  if(JSON.stringify(next) !== curStr){
+    allDays[k] = next;
+    if(k === currentDateKey){ switchToDate(k); renderAllForCurrentDay(); }
   }
+  localStorage.setItem(STORE_KEY, JSON.stringify(allDays));
+  baseSnap[k] = mergedStr;
+  const p2 = pendingAll();
+  if(p2[k] && p2[k].t === t) delete p2[k];
+  else if(p2[k]) p2[k].base = mergedStr;
+  pendingSave(p2);
+  if(p.base) scheduleRecheck(k, { base: p.base, own: snapStr, saved: mergedStr });
+  return j.at;
+}
+/* สองเครื่องบันทึกวันเดียวกันในวินาทีเดียวกัน เครื่องหลังอาจทับเครื่องแรก:
+   ตรวจซ้ำหลังส่ง ถ้าการแก้ของเครื่องนี้หายไป วางกลับเข้าไปใหม่ (ไม่ทับของเครื่องอื่น) */
+const recheckJobs = {};
+function scheduleRecheck(k, job){
+  recheckJobs[k] = job;
+  setTimeout(()=> recheckDay(k), 4000);
+}
+async function recheckDay(k){
+  const job = recheckJobs[k]; if(!job) return;
+  delete recheckJobs[k];
+  try{
+    const srv = await getOne(CLOUD_KIND, cloudDayKey(k));
+    if(!srv.ok || !srv.data || !srv.data.shifts) return;
+    const srvStr = JSON.stringify(srv.data);
+    if(srvStr === job.saved) return;                                   // ไม่มีใครเขียนทับหลังเรา
+    const need = merge3(JSON.parse(job.base), JSON.parse(job.own), srv.data);
+    if(JSON.stringify(need) === srvStr) return;                        // การแก้ของเรายังอยู่ครบ
+    // หายไป: ให้เครื่องเห็น "ส่วนกลางตอนนี้ + การแก้ของเรา (+ที่พิมพ์เพิ่มหลังจากนั้น)" แล้วส่งใหม่ โดยนับเฉพาะส่วนต่างจากส่วนกลาง
+    const cur = allDays[k] || JSON.parse(job.own);
+    const localNext = merge3(JSON.parse(job.own), cur, need);
+    allDays[k] = localNext;
+    if(k === currentDateKey){ switchToDate(k); renderAllForCurrentDay(); }
+    localStorage.setItem(STORE_KEY, JSON.stringify(allDays));
+    const p = pendingAll();
+    p[k] = { t: Date.now(), base: srvStr };
+    pendingSave(p);
+    flushPending(true);
+  }catch(e){}
+}
+async function pushRegistry(){
+  const t = icPendingT(); if(!t) return;
+  const srv = await getOne("ic", "registry");
+  if(!srv.ok) throw new Error(srv.error);
+  const local = icAll();
+  const merged = mergeCases(srv.data && Array.isArray(srv.data.cases) ? srv.data.cases : [], local, true);
+  const recStr = JSON.stringify({ cases: merged });
+  await postOne("ic", "registry", await packData({ cases: merged }));
+  const back = await getOne("ic", "registry");
+  if(!back.ok || JSON.stringify(back.data) !== recStr) throw new Error("ทะเบียนเชื้อส่งแล้วแต่อ่านกลับมาไม่ตรง");
+  if(JSON.stringify(merged) !== JSON.stringify(local)){
+    localStorage.setItem(IC_KEY, JSON.stringify(merged));
+    if(typeof renderEventsRow === "function") renderEventsRow();
+  }
+  if(icPendingT() === t) localStorage.removeItem(IC_PENDING_KEY);
+  setTimeout(recheckRegistry, 4000);
+}
+// ทะเบียนเชื้อ: ตรวจซ้ำว่าเคสของเครื่องนี้ยังอยู่ครบในส่วนกลาง ถ้าหาย ส่งรวมใหม่
+async function recheckRegistry(){
+  try{
+    const srv = await getOne("ic", "registry");
+    if(!srv.ok) return;
+    const srvCases = (srv.data && Array.isArray(srv.data.cases)) ? srv.data.cases : [];
+    const byId = new Map(srvCases.map(x=>[x.id, x]));
+    const lost = icAll().some(x=> x && x.id && (!byId.has(x.id) || (x.closed && !byId.get(x.id).closed)));
+    if(lost){ localStorage.setItem(IC_PENDING_KEY, String(Date.now())); flushPending(true); }
+  }catch(e){}
 }
 
-// save automatically a moment after typing stops, so every change reaches the sheet
-let cloudTimer = null;
-let cloudDirty = false;
-function scheduleCloudSave(){
-  if(!currentDateKey) return;
-  cloudDirty = true;
+let cloudTimer = null, flushing = false, flushAgain = false;
+async function flushPending(silent){
+  if(!authed()) return;
+  if(flushing){ flushAgain = true; return; }
+  flushing = true; clearTimeout(cloudTimer);
+  let msg = "";
+  try{
+    for(const k of Object.keys(pendingAll()).sort()){
+      const at = await pushDay(k);
+      if(at) msg = `✓ บันทึกเรียบร้อย วันที่ ${thaiShortDate(k)} — ทุกเครื่องเห็นแล้ว (${at})`;
+    }
+    await pushRegistry();
+    setSync(msg || "✓ บันทึกเรียบร้อย — ทุกเครื่องเห็นแล้ว", "ok");
+  }catch(err){
+    setSync("⚠ ยังไม่ขึ้นส่วนกลาง: " + (err.message || err) + " — ข้อมูลเก็บในเครื่องแล้ว จะส่งให้อีกครั้งอัตโนมัติ", "bad");
+    if(!silent) showPopup("บันทึกขึ้นส่วนกลางไม่สำเร็จ\n" + (err.message || err));
+  }finally{
+    flushing = false;
+    if(flushAgain){ flushAgain = false; flushPending(true); }
+  }
+}
+// ชื่อเดิมยังใช้ได้
+function cloudSave(silent){ return flushPending(silent); }
+
+// แค่เลือกดู (เปลี่ยนวันที่ / หน้า Export / พรีวิว) ไม่ใช่การแก้ข้อมูล: ห้ามนับเป็นงานค้าง
+function isViewOnly(e){
+  const t = e && e.target;
+  if(!t || !t.closest) return false;
+  if(t.id === "rec-date") return true;
+  return !!t.closest("#export, #prev-overlay");
+}
+function scheduleCloudSave(e){
+  if(!currentDateKey || isViewOnly(e)) return;
+  if(!e || e.type !== "input") saveStore();          // การพิมพ์ถูกจดลงเครื่องอยู่แล้ว ที่เหลือจดตรงนี้
+  pendingMark(currentDateKey);
+  setSync("กำลังบันทึก… (อย่าเพิ่งปิดหน้า)", "busy");
   clearTimeout(cloudTimer);
-  cloudTimer = setTimeout(()=>{ cloudDirty = false; cloudSave(true); }, 1500);
+  cloudTimer = setTimeout(()=> flushPending(true), 800);
 }
 document.addEventListener("input", scheduleCloudSave);
 document.addEventListener("change", scheduleCloudSave);
-
-// flush anything still pending if the tab is closed or backgrounded
-window.addEventListener("beforeunload", ()=>{
-  if(!cloudDirty || !currentDateKey) return;
-  saveStore();
-  const body = JSON.stringify({ pw: AUTH_PW, kind: CLOUD_KIND, date: currentDateKey, data: allDays[currentDateKey] || {} });
-  navigator.sendBeacon && navigator.sendBeacon(CLOUD_URL, new Blob([body], {type:"text/plain;charset=utf-8"}));
+// ปุ่ม Submit / Edit / เพิ่ม / ปิดเคส ฯลฯ แก้ข้อมูลด้วยการกด จึงต้องนับด้วย
+document.addEventListener("click", (e)=>{
+  // ใช้เส้นทางตอนกด (ปุ่มบางปุ่มสั่งวาดแผงใหม่ทันที ปุ่มเดิมจึงหลุดออกจากหน้าแล้วตอนมาถึงตรงนี้)
+  const path = e.composedPath ? e.composedPath() : [];
+  const isBtn = path.some(el=> el && el.tagName === "BUTTON");
+  const inPanel = path.some(el=> el && (el.id === "daily" || el.id === "proc" || el.id === "p4pd"));
+  const inPreview = path.some(el=> el && el.id === "prev-overlay");
+  if(isBtn && inPanel && !inPreview) scheduleCloudSave({ type:"click", target: document.body });
 });
-document.addEventListener("visibilitychange", ()=>{
-  if(document.visibilityState === "hidden" && cloudDirty){ clearTimeout(cloudTimer); cloudDirty=false; cloudSave(true); }
-});
+// ออกจากหน้า/สลับแอป: พยายามส่งงานค้างทันที (ถ้าไม่ทัน ยังอยู่ในเครื่อง และส่งให้ตอนเปิดครั้งหน้า)
+document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState === "hidden") flushPending(true); });
+window.addEventListener("pagehide", ()=> flushPending(true));
+/* ทุก 30 วินาที: มีงานค้าง -> ลองส่งอีกครั้ง (เน็ตหลุดแล้วกลับมา)
+   ไม่มีงานค้าง -> ดึงวันที่เปิดอยู่จากส่วนกลาง ให้เห็นสิ่งที่เครื่องอื่นเพิ่งบันทึก (ข้ามถ้ากำลังพิมพ์อยู่) */
+let REFRESH_MS = 30000;
+async function refreshCurrentDay(){
+  if(!authed() || flushing || !currentDateKey) return;
+  if(pendingAll()[currentDateKey]) return;
+  const a = document.activeElement;
+  if(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.closest && a.closest("#daily, #proc, #p4pd")) return;
+  try{
+    const k = currentDateKey;
+    const r = await getOne(CLOUD_KIND, cloudDayKey(k));
+    if(!r.ok || !r.data || !r.data.shifts) return;
+    const s = JSON.stringify(r.data);
+    if(s === baseSnap[k] || k !== currentDateKey || pendingAll()[k]) return;      // ไม่มีอะไรใหม่ หรือเริ่มแก้ระหว่างรอ
+    allDays[k] = r.data; baseSnap[k] = s;
+    switchToDate(k); renderAllForCurrentDay();
+    localStorage.setItem(STORE_KEY, JSON.stringify(allDays));
+  }catch(e){}
+}
+(function syncLoop(){
+  setTimeout(async ()=>{
+    try{
+      if(!flushing && (Object.keys(pendingAll()).length || icPendingT())) await flushPending(true);
+      else await refreshCurrentDay();
+    }finally{ syncLoop(); }
+  }, REFRESH_MS);
+})();
 
-// pull the shared data as soon as the page opens
+// เปิดหน้า: ฉบับตั้งต้นของวันนี้ แล้วดึงข้อมูลจากส่วนกลาง
+if(currentDateKey && !pendingAll()[currentDateKey]) baseSnap[currentDateKey] = JSON.stringify(allDays[currentDateKey] || data);
 cloudLoad(true);
 
 // โหลดรายชื่อผู้ป่วยไว้ล่วงหน้า เพื่อให้กรองคนที่จำหน่ายแล้วออกได้ตั้งแต่ครั้งแรก
@@ -2688,7 +2947,7 @@ document.querySelectorAll(".ic-mode-btn").forEach(b=>{
   });
 });
 (function initIcExport(){
-  document.getElementById("ic-month").value = new Date().toISOString().slice(0,7);
+  document.getElementById("ic-month").value = localISO().slice(0,7);
   const sel = document.getElementById("ic-year");
   const now = new Date();
   const curBE = now.getFullYear() + 543 + (now.getMonth() + 1 >= 10 ? 1 : 0);
