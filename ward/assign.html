@@ -281,8 +281,9 @@
 <section class="panel" id="work">
   <button class="print-btn" id="btn-print-work">📥 ดาวน์โหลด PDF (แนวนอน — วันนี้)</button>
   <div class="work-daypicker" style="display:flex;align-items:center;gap:8px;margin:0 4px 10px;">
-    <label style="font-size:.74rem;color:#666;">วัน</label>
-    <input type="number" id="work-day-input" min="1" value="1" style="width:64px;padding:7px 6px;border:1px solid var(--line);border-radius:7px;">
+    <label style="font-size:.74rem;color:#666;">วันที่</label>
+    <input type="date" id="work-date-pick" style="flex:0 1 190px;min-width:0;padding:6px 8px;border:1px solid var(--line);border-radius:7px;font-size:.9rem;font-family:inherit;background:#fff;">
+    <input type="number" id="work-day-input" min="1" value="1" style="display:none;">
     <span style="font-size:.72rem;color:#999;">(แสดงเวรดึก/เช้า/บ่าย ของวันนี้เท่านั้น)</span>
   </div>
   <div id="work-days"></div>
@@ -970,6 +971,7 @@ document.querySelectorAll("nav.tabs button").forEach(btn=>{
     document.querySelectorAll("section.panel").forEach(p=>p.classList.remove("active"));
     document.getElementById(btn.dataset.tab).classList.add("active");
     currentTab = btn.dataset.tab;
+    try{ localStorage.setItem("rcu_assign_last_tab", currentTab); }catch(e){}   // จำแท็บล่าสุด
     document.getElementById("jumpbar").style.display = (currentTab==="assign") ? "flex" : "none";
     if(currentTab === "work") renderWorkDay();
     if(currentTab === "summary") renderSummary();
@@ -1406,7 +1408,7 @@ async function refreshMonth(){
 }
 (function syncLoop(){ setTimeout(async ()=>{ try{ await refreshMonth(); } finally { syncLoop(); } }, REFRESH_MS); })();
 
-const NON_DATA_IDS = ["date-pick","month-select","year-input","jump-select","work-day-input"];
+const NON_DATA_IDS = ["date-pick","work-date-pick","month-select","year-input","jump-select","work-day-input"];
 function scheduleCloudSave(e){
   const id = e && e.target && e.target.id;
   if(id && NON_DATA_IDS.indexOf(id) >= 0) return;     // แค่เลือกดู ไม่ใช่การแก้ข้อมูล
@@ -1442,17 +1444,18 @@ function defaultDayFor(yBE, mIdx){
   const n = new Date();
   return (n.getFullYear() + 543 === yBE && n.getMonth() === mIdx) ? n.getDate() : 1;   // เดือนนี้ -> วันนี้ เดือนอื่น -> วันที่ 1
 }
-function goToDay(day){
+function goToDay(day, scroll){
   day = Math.max(1, Math.min(NUM_DAYS, parseInt(day) || 1));
   document.getElementById("date-pick").value = isoOf(currentYBE(), currentMIdx(), day);
+  document.getElementById("work-date-pick").value = isoOf(currentYBE(), currentMIdx(), day);   // ปฏิทินแท็บมอบหมายตามกัน
   document.getElementById("work-day-input").value = day;
   renderWorkDay();
   const el = document.getElementById("assignday-" + day);
-  if(el && currentTab !== "work") el.scrollIntoView({ behavior:"smooth", block:"start" });
+  if(scroll !== false && el && currentTab !== "work") el.scrollIntoView({ behavior:"smooth", block:"start" });
 }
 
 /* เปลี่ยนเดือน: บันทึกของค้างในเดือนเดิมก่อน -> ล้างหน้าจอเป็นเดือนใหม่ (ไม่ให้ชื่อเดือนเก่าค้าง) -> โหลดเดือนใหม่ -> ไปวันที่ที่ต้องการ */
-async function switchToMonth(yBE, mIdx, day){
+async function switchToMonth(yBE, mIdx, day, scroll){
   if(!authed()) return;
   const seq = ++switchSeq;
   clearTimeout(cloudTimer);
@@ -1497,7 +1500,7 @@ async function switchToMonth(yBE, mIdx, day){
     if(r.corrupt) setSync(`ข้อมูล ${getMonthLabel()} ในส่วนกลางเสียหาย อ่านไม่ได้ — แตะที่นี่เพื่อล้างและเริ่มเดือนนี้ใหม่`, "bad");
     else setSync(`โหลด ${getMonthLabel()} ไม่สำเร็จ: ${r.error} — ยังไม่บันทึก แตะที่นี่เพื่อลองใหม่`, "bad");
   }
-  goToDay(day || defaultDayFor(yBE, mIdx));
+  goToDay(day || defaultDayFor(yBE, mIdx), scroll);
 }
 
 // เลือกเดือน/ปีในหน้าตั้งค่า
@@ -1511,6 +1514,15 @@ async function switchToMonth(yBE, mIdx, day){
 // เลือกวันที่จากปฏิทิน: ข้ามเดือนได้ ระบบโหลดเดือนนั้นให้แล้วพาไปวันที่เลือก
 document.getElementById("date-pick").addEventListener("change", (e)=>{
   const v = e.target.value;                           // รูปแบบ yyyy-mm-dd (ค.ศ.)
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(v)) return;
+  const [yy, mm, dd] = v.split("-").map(Number);
+  const yBE = yy + 543, mIdx = mm - 1;
+  if(loadedKey === keyFor(yBE, mIdx) && loadOk) goToDay(dd);
+  else switchToMonth(yBE, mIdx, dd);
+});
+// ปฏิทินแท็บมอบหมาย: เหมือนปฏิทินแท็บ Assign (ข้ามเดือนได้)
+document.getElementById("work-date-pick").addEventListener("change", (e)=>{
+  const v = e.target.value;
   if(!/^\d{4}-\d{2}-\d{2}$/.test(v)) return;
   const [yy, mm, dd] = v.split("-").map(Number);
   const yBE = yy + 543, mIdx = mm - 1;
@@ -1542,7 +1554,15 @@ document.getElementById("sync-status").addEventListener("click", ()=>{
 });
 
 // เปิดหน้า: เดือนปัจจุบัน และพาไปวันนี้
-(function boot(){ const n = new Date(); switchToMonth(n.getFullYear() + 543, n.getMonth(), n.getDate()); })();
+(function boot(){
+  // เปิดหน้า: กลับไปแท็บที่ใช้ล่าสุด
+  let last = null; try{ last = localStorage.getItem("rcu_assign_last_tab"); }catch(e){}
+  if(["assign","work","summary","history"].indexOf(last) >= 0 && last !== currentTab){
+    const b = document.querySelector('nav.tabs button[data-tab="' + last + '"]'); if(b) b.click();
+  }
+  const n = new Date();
+  switchToMonth(n.getFullYear() + 543, n.getMonth(), n.getDate(), false);   // ไม่เลื่อนจอเองตอนเปิด
+})();
 </script>
 </body>
 </html>
