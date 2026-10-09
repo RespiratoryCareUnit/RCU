@@ -61,6 +61,7 @@
   .jumpbar{display:flex;align-items:center;gap:8px;background:#fff;padding:8px 12px;border-bottom:1px solid var(--line);position:sticky;top:39px;z-index:5;}
   .jumpbar label{font-size:.74rem;color:#666;}
   .jumpbar select{flex:1;padding:6px 8px;border:1px solid var(--line);border-radius:7px;font-size:.82rem;}
+  .locked-ui #assign-days, .locked-ui #work-days{pointer-events:none;opacity:.45;}   /* โหลดไม่สำเร็จ/กำลังโหลด: ยังแก้ไขไม่ได้ */
   .jumpbar input[type=date]{flex:1;min-width:0;padding:6px 8px;border:1px solid var(--line);border-radius:7px;font-size:.9rem;font-family:inherit;background:#fff;}
   [id^="assignday-"],[id^="workday-"]{scroll-margin-top:92px;}   /* ไม่ให้หัววันถูกแถบแท็บด้านบนบัง */
 
@@ -1233,18 +1234,42 @@ async function loadMonth(key){
   }
 }
 
+/* ===== สำรองในเครื่อง: ทุกครั้งที่แก้ จดลงเครื่องทันที ก่อนส่งขึ้นส่วนกลาง =====
+   ออกจากหน้าเร็วเกินไป หรือส่งขึ้นส่วนกลางไม่สำเร็จ ข้อมูลก็ยังอยู่ และถูกส่งขึ้นให้เองตอนเปิดหน้าอีกครั้ง */
+const LOCAL_KEY = "rcu_assign_local_v1";
+let lastEditT = 0;
+function localAll(){ try{ return JSON.parse(localStorage.getItem(LOCAL_KEY) || "{}") || {}; }catch(e){ return {}; } }
+function localPut(key, payload, synced){
+  const all = localAll();
+  all[key] = { t: Date.now(), synced: !!synced, data: payload };
+  Object.keys(all).sort((a,b)=> all[b].t - all[a].t).slice(4).forEach(k=> delete all[k]);   // เก็บแค่ 4 เดือนล่าสุด
+  try{ localStorage.setItem(LOCAL_KEY, JSON.stringify(all)); return true; }
+  catch(e){
+    try{ const only = {}; only[key] = all[key]; localStorage.setItem(LOCAL_KEY, JSON.stringify(only)); return true; }
+    catch(e2){ return false; }
+  }
+}
+function localMarkSynced(key){
+  const all = localAll();
+  if(all[key]){ all[key].synced = true; try{ localStorage.setItem(LOCAL_KEY, JSON.stringify(all)); }catch(e){} }
+}
+function currentPayload(){
+  return {
+    assign, changeLog,
+    numDays: document.getElementById("num-days").value,
+    rosterRN: document.getElementById("roster-rn").value,
+    rosterNA: document.getElementById("roster-na").value,
+    rosterWK: document.getElementById("roster-wk").value
+  };
+}
+
 async function cloudSave(){
   if(!authed() || !loadedKey || !loadOk) return;
   const key = loadedKey;
   setSync("กำลังบันทึกขึ้นส่วนกลาง...", "busy");
   try{
-    const payload = {
-      assign, changeLog,
-      numDays: document.getElementById("num-days").value,
-      rosterRN: document.getElementById("roster-rn").value,
-      rosterNA: document.getElementById("roster-na").value,
-      rosterWK: document.getElementById("roster-wk").value
-    };
+    const snapT = lastEditT;
+    const payload = currentPayload();
     const packed = await packData(payload);
     const size = JSON.stringify(packed).length;
     if(size > CELL_LIMIT) throw new Error(`ข้อมูลเดือนนี้ใหญ่เกินที่เก็บได้ (${size.toLocaleString()} ตัวอักษร)`);
@@ -1255,6 +1280,11 @@ async function cloudSave(){
     });
     const j = await res.json();
     if(!j.ok) throw new Error(j.error || "บันทึกไม่สำเร็จ");
+    // เช็คว่าอ่านกลับมาได้ตรงกับที่ส่งไปจริง (กันกรณีส่วนกลางรับแล้วแต่เก็บ/อ่านผิด)
+    const back = await loadMonth(key);
+    const same = back.ok && back.found && JSON.stringify(back.data.assign) === JSON.stringify(payload.assign);
+    if(!same) throw new Error("ส่งแล้วแต่อ่านกลับมาไม่ตรง ข้อมูลยังเก็บไว้ในเครื่อง (แจ้งผู้ดูแลระบบ)");
+    if(lastEditT === snapT) localMarkSynced(key);                 // ไม่มีการแก้เพิ่มระหว่างส่ง = ตรงกับส่วนกลางแล้ว
     const [yy, mm] = key.split("-");
     setSync(`บันทึก ${MONTH_NAMES[parseInt(mm)-1]} ${yy} แล้ว — ${j.at}`, "ok");
   }catch(err){
@@ -1270,12 +1300,16 @@ function scheduleCloudSave(e){
     if(!loadingNow) setSync("โหลดข้อมูลเดือนนี้ไม่สำเร็จ จึงยังไม่บันทึก — แตะที่นี่เพื่อลองใหม่", "bad");
     return;
   }
+  lastEditT = Date.now();
+  localPut(loadedKey, currentPayload(), false);          // จดลงเครื่องทันที
   cloudDirty = true;
   clearTimeout(cloudTimer);
   cloudTimer = setTimeout(()=>{ cloudDirty = false; cloudSave(); }, 1500);
 }
 document.addEventListener("input", scheduleCloudSave);
 document.addEventListener("change", scheduleCloudSave);
+// ปุ่ม "เปลี่ยนเวร / Commit" แก้ข้อมูลด้วยการกดปุ่ม ไม่ใช่การพิมพ์หรือเลือก จึงต้องนับด้วย
+document.addEventListener("click", (e)=>{ if(e.target.closest && e.target.closest(".btn-swap")) scheduleCloudSave(e); });
 document.addEventListener("visibilitychange", ()=>{
   if(document.visibilityState === "hidden" && cloudDirty){ clearTimeout(cloudTimer); cloudDirty = false; cloudSave(); }
 });
@@ -1304,6 +1338,7 @@ async function switchToMonth(yBE, mIdx, day){
   if(seq !== switchSeq) return;
 
   loadingNow = true; loadedKey = ""; loadOk = false;
+  document.body.classList.add("locked-ui");              // ยังไม่โหลดเสร็จ ห้ามพิมพ์ (กันพิมพ์ลงตารางที่จะถูกแทนที่)
   document.getElementById("month-select").value = String(mIdx);
   document.getElementById("year-input").value = String(yBE);
   assign = {}; changeLog = [];
@@ -1317,9 +1352,18 @@ async function switchToMonth(yBE, mIdx, day){
 
   loadingNow = false; lastLoadError = null;
   if(r.ok){
-    if(r.found){ applyLoadedMonth(r.data); setSync(`โหลดเดือน ${getMonthLabel()} แล้ว — ${new Date().toLocaleTimeString("th-TH")}`, "ok"); }
+    const loc = localAll()[key];
+    const pending = loc && !loc.synced && loc.data && loc.data.assign;    // มีข้อมูลที่แก้ไว้แล้วแต่ยังไม่ขึ้นส่วนกลาง
+    if(pending){
+      applyLoadedMonth(loc.data);
+      loadedKey = key; loadOk = true;
+      setSync(`กู้คืนข้อมูล ${getMonthLabel()} ที่ค้างในเครื่อง กำลังส่งขึ้นส่วนกลาง...`, "busy");
+      lastEditT = Date.now();
+      cloudSave();
+    } else if(r.found){ applyLoadedMonth(r.data); setSync(`โหลดเดือน ${getMonthLabel()} แล้ว — ${new Date().toLocaleTimeString("th-TH")}`, "ok"); }
     else { setSync(`ยังไม่มีข้อมูลของ ${getMonthLabel()} ในส่วนกลาง`, "ok"); }
     loadedKey = key; loadOk = true;
+    document.body.classList.remove("locked-ui");
   } else {
     loadedKey = key; loadOk = false; lastLoadError = r;
     if(r.corrupt) setSync(`ข้อมูล ${getMonthLabel()} ในส่วนกลางเสียหาย อ่านไม่ได้ — แตะที่นี่เพื่อล้างและเริ่มเดือนนี้ใหม่`, "bad");
