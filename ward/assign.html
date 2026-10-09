@@ -273,18 +273,17 @@
 <main>
 
 <section class="panel active" id="assign">
-  <button class="print-btn" id="btn-print-assign">📥 ดาวน์โหลด PDF (แนวตั้ง — ทุกวัน)</button>
+  <button class="print-btn" id="btn-print-assign">📥 ดาวน์โหลด PDF</button>
   <div id="assign-days"></div>
   <div id="assign-print-report" class="print-report"></div>
 </section>
 
 <section class="panel" id="work">
-  <button class="print-btn" id="btn-print-work">📥 ดาวน์โหลด PDF (แนวนอน — วันนี้)</button>
   <div class="work-daypicker" style="display:flex;align-items:center;gap:8px;margin:0 4px 10px;">
-    <label style="font-size:.74rem;color:#666;">วันที่</label>
-    <input type="date" id="work-date-pick" style="flex:0 1 190px;min-width:0;padding:6px 8px;border:1px solid var(--line);border-radius:7px;font-size:.9rem;font-family:inherit;background:#fff;">
+    <button class="print-btn" id="btn-print-work" style="display:inline-block;width:auto;flex:0 0 auto;margin:0;padding:6px 12px;">📥 ดาวน์โหลด PDF</button>
+    <label style="font-size:.74rem;color:#666;margin-left:auto;">วันที่</label>
+    <input type="date" id="work-date-pick" style="flex:0 1 170px;min-width:0;padding:6px 8px;border:1px solid var(--line);border-radius:7px;font-size:.9rem;font-family:inherit;background:#fff;">
     <input type="number" id="work-day-input" min="1" value="1" style="display:none;">
-    <span style="font-size:.72rem;color:#999;">(แสดงเวรดึก/เช้า/บ่าย ของวันนี้เท่านั้น)</span>
   </div>
   <div id="work-days"></div>
   <div id="work-print-report" class="print-report"></div>
