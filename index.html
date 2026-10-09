@@ -637,7 +637,7 @@
  </div>
  <div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap">
  <button class="btn purple" onclick="exportToSheets()" style="padding:5px 14px;font-size:10px;letter-spacing:0;border-radius:7px">📊 Export Google Sheets</button>
- <button class="btn blue" onclick="viewSheets()" style="padding:5px 14px;font-size:10px;letter-spacing:0;border-radius:7px">👁 ดู Google Sheets</button>
+ <button class="btn blue" onclick="viewSheets(event)" style="padding:5px 14px;font-size:10px;letter-spacing:0;border-radius:7px">👁 ดูรายงานเดือนนี้ (Excel)</button>
  </div>
  <div id="dash-content"></div>
  </div>
@@ -3482,9 +3482,31 @@ function buildMonthPayload(y,m){
 }
 
 // ── Export to Google Sheets via GAS ─────────────────────────
-function viewSheets(){
-  const url = 'https://docs.google.com/spreadsheets/d/' + '1RIrnaA95ArzpNpcZhsM-ZY9VM5XRzCVl-tY53ewO1t4';
-  window.open(url, '_blank');
+// ดูรายงานเดือนที่เลือก: สร้างไฟล์ Excel ในเครื่องทันที (อ่านอย่างเดียว ไม่เขียนอะไรกลับไปที่ Google Sheet)
+function viewSheets(ev){
+  const btn = ev && ev.target ? ev.target : null;
+  const y = +document.getElementById('dash-year').value;
+  const m = +document.getElementById('dash-month').value;
+  const monthLabel = MONTHS[m-1] + ' ' + (y+543);
+  const startDate = new Date(y, m-1, 1), endDate = new Date(y, m, 0, 23, 59, 59);
+  const hasData = patients.some(p => {
+    const a = new Date(p.admitDate), d = p.dischargeDate ? new Date(p.dischargeDate) : null;
+    return a <= endDate && (!d || d >= startDate);          // รวมผู้ป่วยที่นอนต่อเนื่องข้ามเดือน
+  });
+  if(!hasData){ showError('ไม่มีข้อมูลผู้ป่วยในเดือน ' + monthLabel); return; }
+  const label = btn ? btn.textContent : '';
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ กำลังสร้างไฟล์...'; }
+  _checkXLSX(function(){
+    try{
+      const wb = XLSX.utils.book_new();
+      addMonthSheet(wb, buildMonthPayload(y, m));
+      XLSX.writeFile(wb, 'RCU1_' + MONTHS[m-1] + (y+543) + '.xlsx');
+    }catch(err){
+      showError('สร้างไฟล์ไม่สำเร็จ: ' + (err.message || err));
+    }finally{
+      if(btn){ btn.disabled = false; btn.textContent = label; }
+    }
+  });
 }
 
 async function exportToSheets(){
