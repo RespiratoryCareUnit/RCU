@@ -188,15 +188,12 @@
     table.report-table{ font-size:.68rem; }
   }
 
-  /* สถานะการบันทึก: ตัวหนังสือเล็ก ลอยมุมขวาบนของจอเสมอ (เลื่อนไปไหนก็เห็น) ไม่มีแถบ
-     ตัวหนังสือสีเข้ม + ขอบขาวบางๆ อ่านได้ทั้งบนแถบหัวสีน้ำเงินและบนพื้นขาว / กดทะลุได้ ไม่บังช่องกรอก */
-  #sync-status{position:fixed;top:calc(6px + env(safe-area-inset-top, 0px));right:10px;z-index:80;max-width:58%;margin:0;padding:0;
-    background:none;border:0;box-shadow:none;pointer-events:none;
-    font-size:calc(.86rem - 2px);font-weight:800;line-height:1.3;text-align:right;color:#24324f;
-    text-shadow:0 0 2px #fff,0 0 2px #fff,0 0 3px #fff,0 0 4px #fff;
-    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
-  #sync-status.ok{color:#0b6b33;} #sync-status.busy{color:#8a5a00;}
-  #sync-status.bad{color:#b3261e;pointer-events:auto;cursor:pointer;}   /* สถานะผิดพลาด: แตะได้ (Assign ใช้แตะเพื่อลองใหม่) */
+  /* ป้ายสถานะ: เม็ดยาเล็กๆ ลอยมุมขวาบน ตัวหนังสือแบบหน้าลงทะเบียน (พื้นน้ำเงินเข้มให้อ่านได้ทั้งบนแถบหัวและพื้นขาว) */
+  #sync-status{position:fixed;top:calc(8px + env(safe-area-inset-top, 0px));right:10px;z-index:80;max-width:72%;margin:0;
+    padding:3px 10px;border:0;border-radius:999px;background:rgba(16,32,72,.86);box-shadow:0 1px 4px rgba(0,0,0,.18);
+    font-size:10px;font-weight:700;line-height:1.5;text-align:right;text-shadow:none;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;}
+  #sync-status.bad{pointer-events:auto;cursor:pointer;}
   body{padding-bottom:0;}
 </style>
 </head>
@@ -1158,8 +1155,25 @@ function labelOfKey(key){ const [yy, mm] = String(key).replace(/^[^0-9]+/, "").s
 function daysInMonthBE(yBE, mIdx){ return new Date(yBE - 543, mIdx + 1, 0).getDate(); }
 function isoOf(yBE, mIdx, d){ return `${yBE-543}-${String(mIdx+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`; }
 function setSync(msg, cls){
+  // ป้ายสถานะสั้นๆ แบบเดียวกับหน้าลงทะเบียน ข้อความเต็มเก็บไว้ใน title (แตะป้ายแดงเพื่อดู)
   const el = document.getElementById("sync-status");
-  el.textContent = msg; el.className = cls || "";
+  let label, color;
+  if(cls === "ok"){ label = "☁️ ซิงค์แล้ว"; color = "#00e676"; }
+  else if(cls === "busy"){
+    if(/บันทึก/.test(msg)){ label = "⏳ กำลังบันทึก..."; color = "#ffd600"; }
+    else { label = "⏳ กำลังโหลด..."; color = "#00d4ff"; }
+  }
+  else if(cls === "bad"){
+    color = "#ff6b6b";
+    if(/เสียหาย/.test(msg)) label = "⚠️ ข้อมูลเสีย แตะเพื่อแก้";
+    else if(/โหลด/.test(msg) && /ไม่สำเร็จ|ไม่ได้/.test(msg) && !/ยังไม่ขึ้นส่วนกลาง/.test(msg)) label = "⚠️ โหลดไม่ได้ แตะดู";
+    else label = "⚠️ ซิงค์ไม่ได้ แตะดู";
+  }
+  else { label = "⏳ กำลังโหลด..."; color = "#00d4ff"; }
+  el.textContent = label;
+  el.title = msg;
+  el.className = cls || "";
+  el.style.color = color;
 }
 
 /* เดือนที่ข้อมูลบนหน้าจอเป็นของเดือนนั้น: บันทึกลงเดือนนี้เสมอ ไม่ว่าตัวเลือกเดือนจะเปลี่ยนไปแล้วหรือไม่ */
@@ -1521,7 +1535,8 @@ async function resetDamagedMonth(){
   switchToMonth(currentYBE(), currentMIdx());
 }
 document.getElementById("sync-status").addEventListener("click", ()=>{
-  if(loadOk || loadingNow) return;
+  const el = document.getElementById("sync-status");
+  if(loadOk || loadingNow){ if(el.className === "bad" && el.title) alert(el.title); return; }   // บันทึกไม่สำเร็จ: แสดงสาเหตุ
   if(lastLoadError && lastLoadError.corrupt) resetDamagedMonth();
   else switchToMonth(currentYBE(), currentMIdx());
 });
