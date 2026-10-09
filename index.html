@@ -876,7 +876,8 @@ async function _initPatients() {
 let dcTargetId = null;
 let _currentModalPid = null;
 
-function today(){return new Date().toISOString().split('T')[0]}
+// วันที่ตามเวลาไทย (toISOString เป็นเวลาสากล ช่วง 00:00–07:00 จะได้วันที่ของเมื่อวาน)
+function today(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function nowTime(){return new Date().toTimeString().slice(0,5)}
 function startClock(){
   function tick(){
@@ -3508,61 +3509,47 @@ async function exportToSheets(){
     'DKA:BS<70','DKA:K+<3','DKA:Arrhythmia'
   ];
 
-  // หาเดือนที่มีข้อมูลในปีที่เลือก
-  const monthsWithData = [];
-  for(let m=1; m<=12; m++){
-    // นับเฉพาะเดือนที่มีผู้ป่วยรับใหม่หรือจำหน่ายในเดือนนั้นจริงๆ
-    const startDate = new Date(y, m-1, 1);
-    const endDate = new Date(y, m, 0);
-    const hasData = patients.some(p => {
-      const admitD = new Date(p.admitDate);
-      const dcD = p.dischargeDate ? new Date(p.dischargeDate) : null;
-      // รับในเดือนนี้
-      if(admitD >= startDate && admitD <= endDate) return true;
-      // จำหน่ายในเดือนนี้
-      if(dcD && dcD >= startDate && dcD <= endDate) return true;
-      return false;
-    });
-    if(hasData) monthsWithData.push(m);
-  }
-
-  if(monthsWithData.length === 0){
-    showError('ไม่มีข้อมูลผู้ป่วยในปี ' + (y+543));
+  // Export เฉพาะเดือนที่เลือกใน Dashboard (เดิมไล่ส่งทุกเดือนของปี ทำให้รอนาน)
+  const m = +document.getElementById('dash-month').value;
+  const monthLabel = MONTHS[m-1] + ' ' + (y+543);
+  const startDate = new Date(y, m-1, 1);
+  const endDate = new Date(y, m, 0, 23, 59, 59);
+  // มีผู้ป่วยอยู่ในเดือนนั้นไหม: รับก่อนสิ้นเดือน และยังไม่จำหน่ายก่อนต้นเดือน (รวมคนที่นอนต่อเนื่องข้ามเดือน)
+  const hasData = patients.some(p => {
+    const admitD = new Date(p.admitDate);
+    const dcD = p.dischargeDate ? new Date(p.dischargeDate) : null;
+    return admitD <= endDate && (!dcD || dcD >= startDate);
+  });
+  if(!hasData){
+    showError('ไม่มีข้อมูลผู้ป่วยในเดือน ' + monthLabel);
     return;
   }
 
   const btn = event.target;
   btn.disabled = true;
-  btn.textContent = '⏳ กำลัง Export ' + monthsWithData.length + ' เดือน...';
+  btn.textContent = '⏳ กำลัง Export ' + monthLabel + '...';
 
   let lastUrl = '';
   let success = 0;
-
-  for(const m of monthsWithData){
-    const payload = buildMonthPayload(y, m);
-    payload.ptHeaders = ptHeaders;
-    try {
-      const res = await fetch(gasUrl, {
-        method: 'POST',
-        body: JSON.stringify({ action: 'exportSheets', payload })
-      });
-      const data = await res.json();
-      if(data.ok){
-        lastUrl = data.url;
-        success++;
-        btn.textContent = '⏳ Export แล้ว ' + success + '/' + monthsWithData.length + ' เดือน...';
-      }
-    } catch(e) {
-      console.warn('Export error month ' + m, e);
-    }
+  const payload = buildMonthPayload(y, m);
+  payload.ptHeaders = ptHeaders;
+  try {
+    const res = await fetch(gasUrl, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'exportSheets', payload })
+    });
+    const data = await res.json();
+    if(data.ok){ lastUrl = data.url; success = 1; }
+  } catch(e) {
+    console.warn('Export error ' + monthLabel, e);
   }
 
   if(success > 0){
-    btn.textContent = '✅ Export สำเร็จ ' + success + ' เดือน!';
+    btn.textContent = '✅ Export ' + monthLabel + ' สำเร็จ!';
     if(lastUrl) window.open(lastUrl, '_blank');
     setTimeout(() => { btn.disabled=false; btn.textContent='📊 Export Google Sheets'; }, 4000);
   } else {
-    showError('Export ไม่สำเร็จ');
+    showError('Export ' + monthLabel + ' ไม่สำเร็จ');
     btn.disabled=false; btn.textContent='📊 Export Google Sheets';
   }
 }
