@@ -10,8 +10,8 @@
 .fp-btn{display:inline-flex;align-items:center;gap:6px;background:#f3f4f6;border:2px dashed #b0b7c3;color:#9aa3b2;
   border-radius:8px;padding:7px 16px;font-size:13px;font-weight:800;letter-spacing:1.5px;cursor:pointer;
   font-family:inherit;transition:all .12s ease;}
-.fp-btn.fp-sm{font-size:11px;padding:5px 12px;}
-.bed-move-btn{background:transparent;border:1px solid rgba(100,116,139,.35);color:#64748b;border-radius:7px;padding:4px 9px;font-size:11px;font-weight:600;font-family:inherit;cursor:pointer;white-space:nowrap;}
+.fp-btn.fp-sm{box-sizing:border-box;width:100%;min-height:34px;justify-content:center;font-size:11px;padding:4px 8px;letter-spacing:.5px;white-space:nowrap;}
+.bed-move-btn{box-sizing:border-box;width:100%;min-height:34px;background:transparent;border:1px solid rgba(100,116,139,.35);color:#64748b;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;font-family:inherit;cursor:pointer;white-space:nowrap;}
 .bed-move-btn:active{background:rgba(100,116,139,.12);}
 .detail-bed{font-size:var(--fs-sm);font-weight:700;color:var(--text);padding:2px 10px 8px;}
 .fp-btn.on{background:#fff5f5;border:3px solid #d50000;color:#d50000;transform:rotate(-2deg);
@@ -1766,11 +1766,8 @@ function showDetail(id){
 
   const riskHtml=`
   <div style="margin-top:10px;border-top:1px solid #a0b4d0;padding-top:10px">
-    <div style="display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px">
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <span style="color:#d50000;font-size:11px;font-weight:700;letter-spacing:.8px">🚨 FAST PASS</span>
-        <button type="button" class="fp-btn fp-sm ${p.fastPass?'on':''}" onclick="toggleFastPassPatient(${id})">${p.fastPass?'FAST PASS ✓ (กดเพื่อถอด)':'+ ติดตรา FAST PASS'}</button>
-      </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:8px">
+      <button type="button" class="fp-btn fp-sm ${p.fastPass?'on':''}" onclick="toggleFastPassPatient(${id})">${p.fastPass?'FAST PASS ✓ (กดเพื่อถอด)':'+ ติดตรา FAST PASS'}</button>
       ${p.status==='admitted'?`<button type="button" class="bed-move-btn" onclick="openBedMove(${id})">🛏️ ${p.bed?'ย้าย/สลับเตียง':'ระบุเตียง'}</button>`:''}
     </div>
   </div>
