@@ -407,7 +407,9 @@ function buildOptions(list, selected){
 function buildBedOptions(selected){
   let html = `<option value="">-</option>`;
   BED_NUMBERS.forEach(n=>{
-    html += `<option value="${n}" ${String(n)===String(selected)?"selected":""}>${n}</option>`;
+    const occ = (typeof regBedOccupant === "function") ? regBedOccupant(n) : null;
+    const who = occ ? " – " + String(occ.name).trim().split(/\s+/)[0] : "";
+    html += `<option value="${n}" ${String(n)===String(selected)?"selected":""}>${n}${who}</option>`;
   });
   return html;
 }
@@ -715,7 +717,31 @@ async function loadRegForBeds(){
     if(j && j.ok && Array.isArray(j.patients)) regPatients = j.patients;
   }catch(e){}
 }
-setTimeout(loadRegForBeds, 0);      // ดึงหลังหน้าโหลดเสร็จ ไม่ถ่วงการเปิดหน้า
+setTimeout(refreshRegPatients, 0);      // ดึงหลังหน้าโหลดเสร็จ ไม่ถ่วงการเปิดหน้า
+// ผู้ป่วยที่นอนอยู่เตียงนี้ "ตอนนี้" ตามระบบลงทะเบียน
+function regDx(p){
+  const dx = String(p.diagnosis || "").trim(), sp = String(p.diagSpec || "").trim();
+  if(/อื่น/.test(dx) && sp) return sp;
+  return sp ? dx + " (" + sp + ")" : dx;
+}
+function regBedOccupant(bedNo){
+  if(!regPatients) return null;
+  const want = normBed(bedNo); if(!want) return null;
+  return regPatients.find(p => p.status === "admitted" && normBed(p.bed) === want) || null;
+}
+function regAdmittedByName(name){
+  if(!regPatients) return null;
+  const n = String(name || "").trim(); if(!n) return null;
+  return regPatients.find(p => p.status === "admitted" && String(p.name || "").trim() === n) || null;
+}
+let regLoadedAt = 0;
+async function refreshRegPatients(){
+  await loadRegForBeds();
+  regLoadedAt = Date.now();
+  const a = document.activeElement, typing = a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.closest && a.closest("#work-days");
+  if(currentTab === "work" && loadOk && !typing) renderWorkDay();            // ให้ตัวเลือกเตียงบอกชื่อล่าสุด
+}
+setInterval(refreshRegPatients, 60000);
 function isDischargedName(name){
   if(!regPatients) return false;
   const n = String(name || "").trim(); if(!n) return false;
@@ -751,13 +777,15 @@ function copyFromPrevShift(day, shift){
       const hasSrc = String(sb.bed || "").trim() || String(sb.patient || "").trim();
       if(!hasSrc) return;
       if(sb.patient && isDischargedName(sb.patient)){ skippedDc.push(`เตียง ${sb.bed || "-"}: ${sb.patient}`); return; }
-      const n = normBed(sb.bed);
+      const nowReg = sb.patient ? regAdmittedByName(sb.patient) : null;
+      const bedNow = (nowReg && nowReg.bed) ? String(nowReg.bed) : (sb.bed || "");        // ย้ายเตียงในระบบลงทะเบียนแล้ว: ใช้เตียงใหม่
+      const n = normBed(bedNow);
       if(n && used.has(n)) return;                                            // เตียงนี้มีคนใช้ในเวรนี้แล้ว
       // ช่องเดิมของคนเดิม ถ้ามีคนกรอกไว้แล้ว ใช้ช่องว่างถัดไปของคนเดิมแทน (ไม่ทับช่องที่กรอกแล้ว)
       let ti = (dg.beds[bi] && isEmpty(dg.beds[bi])) ? bi : dg.beds.findIndex(isEmpty);
       if(ti < 0) return;
       const db = dg.beds[ti];
-      db.bed = sb.bed || ""; db.patient = sb.patient || ""; db.diag = sb.diag || "";
+      db.bed = bedNow; db.patient = sb.patient || ""; db.diag = sb.diag || "";
       if(n) used.add(n);
       copiedSlots.push([gi, ti]);
     });
@@ -791,6 +819,8 @@ function autofillBed(sel, rec, day, shift){
     if(auto){ inp.classList.add("autofilled"); inp.dataset.auto = "1"; } else { inp.classList.remove("autofilled"); delete inp.dataset.auto; }
   };
   pIn.placeholder = "ชื่อ-สกุล";
+  const occ = sel.value ? regBedOccupant(sel.value) : null;
+  if(occ){ setVal(pIn, "patient", String(occ.name || "").trim(), true); setVal(dIn, "diag", regDx(occ), true); return; }   // คนที่อยู่เตียงนี้ตอนนี้
   const hit = sel.value ? findLastPatientForBed(sel.value, day, shift) : null;
   if(hit && isDischargedName(hit.patient)){
     setVal(pIn, "patient", "", false); setVal(dIn, "diag", "", false);
@@ -1103,6 +1133,7 @@ document.querySelectorAll("nav.tabs button").forEach(btn=>{
     document.getElementById(btn.dataset.tab).classList.add("active");
     currentTab = btn.dataset.tab;
     try{ localStorage.setItem("rcu_assign_last_tab", currentTab); }catch(e){}   // จำแท็บล่าสุด
+    if(currentTab === "work" && Date.now() - regLoadedAt > 60000) refreshRegPatients();
     document.getElementById("jumpbar").style.display = (currentTab==="assign") ? "flex" : "none";
     if(currentTab === "work") renderWorkDay();
     if(currentTab === "summary") renderSummary();
