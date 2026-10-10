@@ -103,6 +103,8 @@
 
   /* --- Work tab (bed table) --- */
   .shift-label{font-size:.72rem;font-weight:700;color:#ffffff;padding:5px 10px;margin:0 4px;}
+  .copy-prev-btn{background:rgba(255,255,255,.94);color:#0e121a;border:0;border-radius:6px;padding:3px 9px;font-size:.68rem;font-weight:700;font-family:inherit;cursor:pointer;}
+  .copy-prev-btn:active{background:#dde7f7;}
   .shift-label.shift-ดึก{background:var(--shift-night);}
   .shift-label.shift-เช้า{background:var(--shift-morn);}
   .shift-label.shift-บ่าย{background:var(--shift-aft);}
@@ -115,6 +117,7 @@
   }
   table.sheet-table input.bed-patient{min-width:150px;}
   table.sheet-table input.bed-diag{min-width:110px;}
+  table.sheet-table input.autofilled{background:#fff6cc;}   /* เติมให้อัตโนมัติ ควรเหลือบตรวจ */
   table.sheet-table select.bed-num{min-width:36px;padding:6px 1px;}
   table.sheet-table select.bed-ptype{min-width:42px;padding:6px 1px;font-size:.7rem;}
   table.sheet-table select.bed-infect{min-width:38px;padding:6px 1px;font-size:.64rem;}
@@ -618,7 +621,7 @@ function renderWorkDay(){
   const monthName = getMonthLabel();
   let html = `<div id="workday-${d}"><div class="day-heading">วันที่ ${d} เดือน ${monthName}</div>`;
   SHIFTS.forEach(shift=>{
-    html += `<div class="shift-label shift-${shift}">เวร${shift}</div>${buildShiftTable(d, shift)}`;
+    html += `<div class="shift-label shift-${shift}" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">เวร${shift}<button type="button" class="copy-prev-btn" data-day="${d}" data-shift="${shift}">📋 คัดลอกจากเวรก่อน</button></div>${buildShiftTable(d, shift)}`;
   });
   html += `</div>`;
   document.getElementById("work-days").innerHTML = html;
@@ -656,6 +659,7 @@ document.getElementById("work-days").addEventListener("change", (e)=>{
       }
     }
     rec.groups[t.dataset.gi].beds[t.dataset.bi].bed = newVal;
+    autofillBed(t, rec, +day, shift);
   }
   else if(t.classList.contains("bed-ptype")) rec.groups[t.dataset.gi].beds[t.dataset.bi].ptype = t.value;
   else if(t.classList.contains("bed-infect")) rec.groups[t.dataset.gi].beds[t.dataset.bi].infect = t.value;
@@ -668,7 +672,135 @@ document.getElementById("work-days").addEventListener("input", (e)=>{
   const rec = assign[day][shift];
   if(t.classList.contains("bed-patient")) rec.groups[t.dataset.gi].beds[t.dataset.bi].patient = t.value;
   else if(t.classList.contains("bed-diag")) rec.groups[t.dataset.gi].beds[t.dataset.bi].diag = t.value;
+  if(t.classList.contains("bed-patient") || t.classList.contains("bed-diag")){ t.classList.remove("autofilled"); delete t.dataset.auto; }   // พิมพ์เอง = ไม่ใช่ค่าที่เติมให้แล้ว
 });
+
+/* ---------------- เลือกเลขเตียง -> เติมชื่อ + Dx จากเวรล่าสุดที่เตียงนั้นมีผู้ป่วย ---------------- */
+function normBed(v){ return String(v == null ? "" : v).replace(/เตียง/g, "").replace(/\s+/g, "").replace(/^0+(?=\d)/, "").toLowerCase(); }
+function findLastPatientForBed(bedNo, day, shift){
+  const want = normBed(bedNo); if(!want) return null;
+  const look = (data, d, s)=>{
+    const r = data && data[d] && data[d][s]; if(!r || !r.groups) return null;
+    for(const g of r.groups) for(const b of (g.beds || [])){
+      if(normBed(b.bed) === want && String(b.patient || "").trim()) return { patient: b.patient, diag: b.diag || "" };
+    }
+    return null;
+  };
+  // ย้อนจากเวรก่อนหน้าในเดือนนี้
+  let d = day, si = SHIFTS.indexOf(shift) - 1;
+  while(d >= 1){
+    for(; si >= 0; si--){ const hit = look(assign, d, SHIFTS[si]); if(hit) return hit; }
+    d--; si = SHIFTS.length - 1;
+  }
+  // ต้นเดือน: ดูเดือนก่อนจากสำเนาในเครื่อง (ถ้ามี)
+  try{
+    const yBE = currentYBE(), mIdx = currentMIdx();
+    const pY = mIdx === 0 ? yBE - 1 : yBE, pM = mIdx === 0 ? 11 : mIdx - 1;
+    const all = localAll(), ent = all[keyFor(pY, pM)] || all[legacyKeyFor(pY, pM)];
+    const prev = ent && ent.data && ent.data.assign;
+    if(prev){
+      for(let pd = 31; pd >= 1; pd--) for(let ps = SHIFTS.length - 1; ps >= 0; ps--){ const hit = look(prev, pd, SHIFTS[ps]); if(hit) return hit; }
+    }
+  }catch(e){}
+  return null;
+}
+// รายชื่อจากระบบลงทะเบียน ใช้เช็คว่าผู้ป่วยเดิมของเตียงจำหน่ายไปแล้วหรือยัง (โหลดไม่ได้ก็ข้ามการเช็ค)
+// ที่อยู่ระบบลงทะเบียน (ชุดเดียวกับที่หน้าบันทึกเหตุการณ์ใช้)
+const REG_URL = "https://script.google.com/macros/s/AKfycbzr9m8ykJeeKns-iVCeT1lddkRNVpsl3SFgpEJX4HNaoE943S6JDqoVSFytKLnUcVhElw/exec";
+let regPatients = null;
+async function loadRegForBeds(){
+  try{
+    const res = await fetch(REG_URL + "?action=load&t=" + Date.now());
+    const j = await res.json();
+    if(j && j.ok && Array.isArray(j.patients)) regPatients = j.patients;
+  }catch(e){}
+}
+setTimeout(loadRegForBeds, 0);      // ดึงหลังหน้าโหลดเสร็จ ไม่ถ่วงการเปิดหน้า
+function isDischargedName(name){
+  if(!regPatients) return false;
+  const n = String(name || "").trim(); if(!n) return false;
+  const same = regPatients.filter(p => String(p.name || "").trim() === n);
+  return same.length > 0 && !same.some(p => p.status === "admitted");
+}
+/* ---------------- ปุ่ม "คัดลอกจากเวรก่อน": ยกเตียง + ชื่อ + Dx ของเวรก่อนหน้ามาทั้งชุด (เฉพาะช่องที่ว่าง) ---------------- */
+function prevShiftSource(day, shift){
+  const si = SHIFTS.indexOf(shift);
+  if(si > 0) return { rec: assign[day] && assign[day][SHIFTS[si-1]], label: `เวร${SHIFTS[si-1]}` };
+  if(day > 1) return { rec: assign[day-1] && assign[day-1][SHIFTS[SHIFTS.length-1]], label: `เวรบ่าย วันที่ ${day-1}` };
+  try{                                                   // วันที่ 1 เวรดึก: เวรบ่ายวันสุดท้ายของเดือนก่อน (จากสำเนาในเครื่อง)
+    const yBE = currentYBE(), mIdx = currentMIdx();
+    const pY = mIdx === 0 ? yBE - 1 : yBE, pM = mIdx === 0 ? 11 : mIdx - 1;
+    const all = localAll(), ent = all[keyFor(pY, pM)] || all[legacyKeyFor(pY, pM)];
+    const data = ent && ent.data, last = data && (parseInt(data.numDays) || 31);
+    const rec = data && data.assign && data.assign[last] && data.assign[last][SHIFTS[SHIFTS.length-1]];
+    if(rec) return { rec, label: "เวรบ่ายวันสุดท้ายของเดือนก่อน" };
+  }catch(e){}
+  return { rec: null, label: "" };
+}
+function copyFromPrevShift(day, shift){
+  const src = prevShiftSource(day, shift), dst = assign[day] && assign[day][shift];
+  if(!dst) return;
+  if(!src.rec || !src.rec.groups){ alert("ไม่มีข้อมูลของเวรก่อนหน้าให้คัดลอก"); return; }
+  const used = new Set();
+  dst.groups.forEach(g => g.beds.forEach(b => { const n = normBed(b.bed); if(n) used.add(n); }));
+  const copiedSlots = [], skippedDc = [];
+  src.rec.groups.forEach((sg, gi)=>{
+    const dg = dst.groups[gi]; if(!dg) return;
+    const isEmpty = b => !String(b.bed || "").trim() && !String(b.patient || "").trim() && !String(b.diag || "").trim();
+    (sg.beds || []).forEach((sb, bi)=>{
+      const hasSrc = String(sb.bed || "").trim() || String(sb.patient || "").trim();
+      if(!hasSrc) return;
+      if(sb.patient && isDischargedName(sb.patient)){ skippedDc.push(`เตียง ${sb.bed || "-"}: ${sb.patient}`); return; }
+      const n = normBed(sb.bed);
+      if(n && used.has(n)) return;                                            // เตียงนี้มีคนใช้ในเวรนี้แล้ว
+      // ช่องเดิมของคนเดิม ถ้ามีคนกรอกไว้แล้ว ใช้ช่องว่างถัดไปของคนเดิมแทน (ไม่ทับช่องที่กรอกแล้ว)
+      let ti = (dg.beds[bi] && isEmpty(dg.beds[bi])) ? bi : dg.beds.findIndex(isEmpty);
+      if(ti < 0) return;
+      const db = dg.beds[ti];
+      db.bed = sb.bed || ""; db.patient = sb.patient || ""; db.diag = sb.diag || "";
+      if(n) used.add(n);
+      copiedSlots.push([gi, ti]);
+    });
+  });
+  renderWorkDay();
+  copiedSlots.forEach(([gi, bi])=>{
+    document.querySelectorAll(`#work-days input.bed-patient[data-day="${day}"][data-shift="${shift}"][data-gi="${gi}"][data-bi="${bi}"], #work-days input.bed-diag[data-day="${day}"][data-shift="${shift}"][data-gi="${gi}"][data-bi="${bi}"]`)
+      .forEach(inp => { if(inp.value){ inp.classList.add("autofilled"); inp.dataset.auto = "1"; } });
+  });
+  if(copiedSlots.length) scheduleCloudSave({ type: "click", target: document.body });
+  const btn = document.querySelector(`#work-days .copy-prev-btn[data-day="${day}"][data-shift="${shift}"]`);
+  if(btn){
+    btn.textContent = copiedSlots.length ? `✓ คัดลอก ${copiedSlots.length} เตียงจาก${src.label}` : "ไม่มีช่องว่างให้คัดลอก";
+    setTimeout(()=>{ if(btn.isConnected) btn.textContent = "📋 คัดลอกจากเวรก่อน"; }, 3000);
+  }
+  if(skippedDc.length) alert("ไม่ได้คัดลอกผู้ป่วยที่จำหน่ายแล้ว:\n" + skippedDc.join("\n"));
+}
+document.getElementById("work-days").addEventListener("click", (e)=>{
+  const b = e.target.closest && e.target.closest(".copy-prev-btn");
+  if(b) copyFromPrevShift(+b.dataset.day, b.dataset.shift);
+});
+function autofillBed(sel, rec, day, shift){
+  const row = sel.closest("tr"); if(!row) return;
+  const pIn = row.querySelector("input.bed-patient"), dIn = row.querySelector("input.bed-diag");
+  if(!pIn || !dIn) return;
+  const bed = rec.groups[sel.dataset.gi].beds[sel.dataset.bi];
+  const canFill = !pIn.value.trim() || pIn.dataset.auto === "1";     // ไม่ทับชื่อที่พิมพ์เอง
+  if(!canFill) return;
+  const setVal = (inp, key, v, auto)=>{
+    inp.value = v; bed[key] = v;
+    if(auto){ inp.classList.add("autofilled"); inp.dataset.auto = "1"; } else { inp.classList.remove("autofilled"); delete inp.dataset.auto; }
+  };
+  pIn.placeholder = "ชื่อ-สกุล";
+  const hit = sel.value ? findLastPatientForBed(sel.value, day, shift) : null;
+  if(hit && isDischargedName(hit.patient)){
+    setVal(pIn, "patient", "", false); setVal(dIn, "diag", "", false);
+    pIn.placeholder = "เดิม: " + hit.patient + " (จำหน่ายแล้ว)";
+  } else if(hit){
+    setVal(pIn, "patient", hit.patient, true); setVal(dIn, "diag", hit.diag, true);
+  } else if(pIn.dataset.auto === "1"){
+    setVal(pIn, "patient", "", false); setVal(dIn, "diag", "", false);   // เปลี่ยนเตียงจากค่าที่เติมไว้ แต่เตียงใหม่ไม่มีประวัติ
+  }
+}
 
 /* ---------------- jump-to-day (aware of active tab) ---------------- */
 function renderJumpSelect(){
