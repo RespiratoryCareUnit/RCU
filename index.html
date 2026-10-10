@@ -10,6 +10,10 @@
 .fp-btn{display:inline-flex;align-items:center;gap:6px;background:#f3f4f6;border:2px dashed #b0b7c3;color:#9aa3b2;
   border-radius:8px;padding:7px 16px;font-size:13px;font-weight:800;letter-spacing:1.5px;cursor:pointer;
   font-family:inherit;transition:all .12s ease;}
+.fp-btn.fp-sm{font-size:11px;padding:5px 12px;}
+.bed-move-btn{background:transparent;border:1px solid rgba(100,116,139,.35);color:#64748b;border-radius:7px;padding:4px 9px;font-size:11px;font-weight:600;font-family:inherit;cursor:pointer;white-space:nowrap;}
+.bed-move-btn:active{background:rgba(100,116,139,.12);}
+.detail-bed{font-size:var(--fs-sm);font-weight:700;color:var(--text);padding:2px 10px 8px;}
 .fp-btn.on{background:#fff5f5;border:3px solid #d50000;color:#d50000;transform:rotate(-2deg);
   box-shadow:0 0 0 2px #fff,0 0 0 4px rgba(213,0,0,.25);}
 .fp-stamp-sm{display:inline-block;margin-left:8px;padding:0 6px;border:2px solid #d50000;color:#d50000;
@@ -103,6 +107,9 @@
  <input type="date" id="r-date">
  <input type="time" id="r-time">
  </div>
+ </div>
+ <div class="field"><label>เตียง <span class="req">*</span></label>
+ <select id="r-bed" onchange="checkRegisterReady()"><option value="">-- เลือก --</option></select>
  </div>
  <div class="field"><label>รับจากแผนก</label>
  <select id="r-source" onchange="toggleSourceDept()">
@@ -1269,7 +1276,8 @@ function checkRegisterReady(){
   const patType=document.getElementById('r-type').value;
   const diag=document.getElementById('r-diag').value;
   const saps3=Number(document.getElementById('saps3-score').textContent)||0;
-  const ready0=!!(name&&hn&&an&&age&&gender&&right&&patType&&diag&&saps3>0&&_onFCState);
+  const bedSel=(document.getElementById('r-bed')||{value:''}).value;
+  const ready0=!!(name&&hn&&an&&age&&gender&&right&&patType&&diag&&saps3>0&&_onFCState&&bedSel);
   const ready=ready0||(!window._editAdmitMode&&bedsFull());   // เตียงเต็ม: ให้กดได้เพื่อขึ้นป๊อปอัปแจ้งเตือน
   const btn=document.getElementById('btn-register');
   if(btn){
@@ -1293,6 +1301,10 @@ function doRegister(){
   const patType=document.getElementById('r-type').value;
   const diag=document.getElementById('r-diag').value;
   if(!name||!hn||!an||!age||!gender||!right||!patType||!diag){showError('กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน');return;}
+  const bed=(document.getElementById('r-bed')||{value:''}).value;
+  if(!bed){showError('กรุณาเลือกเตียง');return;}
+  const _occ=bedOccupants(window._editAdmitMode?window._editAdmitId:null);
+  if(_occ[bed]){showError('เตียง '+bed+' มี '+_occ[bed].name+' อยู่แล้ว\nเลือกเตียงอื่น หรือย้ายผู้ป่วยเดิมก่อน');refreshRegBedSelect();return;}
   if(!_onFCState){showError('กรุณาเลือก On F/C (ใช่ หรือ ไม่ใช่)');return;}
   const saps3Check=Number(document.getElementById('saps3-score').textContent)||0;
   if(saps3Check===0){showError('กรุณากรอก SAPS 3 Score ให้ครบถ้วน\n(ต้องได้คะแนน > 0)');return;}
@@ -1343,6 +1355,7 @@ function doRegister(){
     sourceDept:(document.getElementById('r-source-dept')||{value:''}).value.trim(),
     sourceDeptSpec:(document.getElementById('r-source-dept-spec')||{value:''}).value.trim(),
     fastPass:!!_fastPass,
+    bed:bed, bedHistory:[{from:'',to:bed,at:today()+' '+nowTime()}],
     status:'admitted',
     dischargeDate:null,dcType:null,finalDiag:null,finalDiagSpec:null,los:null,summary:'',
     nr:false,cpr:false,refused:false,weanSuccess:false,weanFail:false
@@ -1366,6 +1379,7 @@ function doRegister(){
         source:p.source, sourceDept:p.sourceDept, sourceDeptSpec:p.sourceDeptSpec,
         fastPass:p.fastPass,
       });
+      if(String(existingP.bed||'')!==String(bed)){ pushBedHistory(existingP, existingP.bed, bed); existingP.bed=bed; }
       updateCensus();
       saveData();
       window._editAdmitMode = false;
@@ -1436,6 +1450,8 @@ function doRegister(){
   showSuccess(window._editAdmitMode?'แก้ไขข้อมูลสำเร็จ ✓':'ลงทะเบียนรับผู้ป่วยสำเร็จ ✓');
 }
 function resetRegisterForm(){
+  { const b=document.getElementById('r-bed'); if(b) b.value=''; }
+  setTimeout(refreshRegBedSelect,0);
   ['r-name','r-hn','r-an','r-age','r-diag-spec'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   ['r-gender','r-right','r-oxy','r-type','r-diag','r-source'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   ['r-source-dept','r-source-dept-spec','r-oxy-spec'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
@@ -1480,6 +1496,28 @@ function cancelEditAdmit(){
 }
 /* ===== จำกัดเตียง: รับใหม่ได้เมื่อมีผู้ป่วยนอนอยู่ไม่ถึง 8 ราย ===== */
 const MAX_BEDS = 8;
+/* ===== เลขเตียง: 1 เตียงมีผู้ป่วยที่นอนอยู่ได้คนเดียว ===== */
+function _escB(s){ return String(s==null?'':s).replace(/[&<>"']/g, ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
+function bedOccupants(excludeId){
+  const m={};
+  patients.forEach(p=>{ if(p.status==='admitted' && p.bed && String(p.id)!==String(excludeId)) m[String(p.bed)]=p; });
+  return m;
+}
+function refreshRegBedSelect(){
+  const sel=document.getElementById('r-bed'); if(!sel) return;
+  const cur=sel.value;
+  const occ=bedOccupants(window._editAdmitMode?window._editAdmitId:null);
+  let h='<option value="">-- เลือก --</option>';
+  for(let b=1;b<=MAX_BEDS;b++){
+    const o=occ[b];
+    h+='<option value="'+b+'"'+(o?' disabled':'')+'>เตียง '+b+' ('+(o?_escB(o.name):'ว่าง')+')</option>';
+  }
+  sel.innerHTML=h;
+  if(cur && !occ[cur]) sel.value=cur;
+}
+function pushBedHistory(p, from, to){
+  (p.bedHistory=p.bedHistory||[]).push({from:from||'', to:to||'', at:today()+' '+nowTime()});
+}
 let _bedCheckTimeoutMs = 8000;
 let _bedPopupLastAt = 0;
 let _bedFocusChecking = false;
@@ -1527,7 +1565,6 @@ document.getElementById('tab-register').addEventListener('focusin', async functi
   const isField = t.tagName==='TEXTAREA' || (t.tagName==='INPUT' && !['checkbox','radio','button','submit'].includes(t.type));
   if(!isField || window._editAdmitMode) return;
   if(!bedsFull() || _bedFocusChecking) return;               // ในเครื่องเห็นว่ายังไม่เต็ม -> ไม่รบกวน (ปุ่มลงทะเบียนยังตรวจกับเซิร์ฟเวอร์อีกรอบ)
-  if(Date.now()-_bedPopupLastAt < 30000) return;             // เพิ่งเตือนไป ไม่เตือนซ้ำรัวๆ
   _bedFocusChecking=true;
   try{
     const latest=await fetchLatestPatients();
@@ -1539,7 +1576,7 @@ document.getElementById('tab-register').addEventListener('focusin', async functi
     }
     updateCensus();
     const n=Math.max(admittedCount(latest), admittedCount());
-    if(n>=MAX_BEDS && !window._editAdmitMode){
+    if(n>=MAX_BEDS && !window._editAdmitMode && Date.now()-_bedPopupLastAt >= 30000){   // ดึงข้อมูลใหม่เสมอ แต่ไม่เตือนซ้ำภายใน 30 วินาที
       if(document.activeElement && document.activeElement.blur) document.activeElement.blur();   // ไม่ให้คีย์บอร์ดเด้งค้าง
       showBedsFullPopup(n);
     }
@@ -1596,6 +1633,7 @@ function listSearch(){
 }
 let _renderTimer=null;
 function renderList(){
+  try{ refreshRegBedSelect(); }catch(e){}
   if(_renderTimer)clearTimeout(_renderTimer);
   _renderTimer=setTimeout(_doRenderList,50);
 }
@@ -1646,7 +1684,7 @@ function _doRenderList(){
       onclick="showDetail(${p.id})"
       onmouseenter="this.style.background='#dbeafe'"
       onmouseleave="this.style.background='${bg}'">
-      <span style="color:var(--blue);font-size:var(--fs-sm);font-weight:700;font-family:"IBM Plex Mono",'IBM Plex Mono'">${p.hn}</span>
+      <div><span style="color:var(--blue);font-size:var(--fs-sm);font-weight:700;font-family:"IBM Plex Mono",'IBM Plex Mono'">${p.hn}</span>${isAdmit?`<div style="font-size:var(--fs-sm);font-weight:400;line-height:1.3;color:${p.bed?'var(--muted)':'#e65100'}">🛏️ ${p.bed?p.bed:'ยังไม่ระบุ'}</div>`:''}</div>
       <div>
         <div style="color:var(--text);font-size:var(--fs-sm);font-weight:600">${p.name}${p.fastPass?'<span class="fp-stamp-sm">FAST PASS</span>':''}</div>
         <div style="color:var(--muted);font-size:var(--fs-xs);margin-top:1px">${p.diagnosis}</div>
@@ -1728,9 +1766,12 @@ function showDetail(id){
 
   const riskHtml=`
   <div style="margin-top:10px;border-top:1px solid #a0b4d0;padding-top:10px">
-    <div style="display:flex;align-items:center;justify-content:space-between">
-      <span style="color:#d50000;font-size:11px;font-weight:700;letter-spacing:.8px">🚨 FAST PASS</span>
-      <button type="button" class="fp-btn ${p.fastPass?'on':''}" onclick="toggleFastPassPatient(${id})">${p.fastPass?'FAST PASS ✓ (กดเพื่อถอด)':'+ ติดตรา FAST PASS'}</button>
+    <div style="display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="color:#d50000;font-size:11px;font-weight:700;letter-spacing:.8px">🚨 FAST PASS</span>
+        <button type="button" class="fp-btn fp-sm ${p.fastPass?'on':''}" onclick="toggleFastPassPatient(${id})">${p.fastPass?'FAST PASS ✓ (กดเพื่อถอด)':'+ ติดตรา FAST PASS'}</button>
+      </div>
+      ${p.status==='admitted'?`<button type="button" class="bed-move-btn" onclick="openBedMove(${id})">🛏️ ${p.bed?'ย้าย/สลับเตียง':'ระบุเตียง'}</button>`:''}
     </div>
   </div>
   <div style="margin-top:10px;border-top:1px solid #a0b4d0;padding-top:10px">
@@ -1883,6 +1924,10 @@ function showDetail(id){
       return `<tr><td>${k}</td><td>${v}</td></tr>`;
     }).join('')+
     '</tbody></table>'+riskHtml+offFCBtn+dcBtn+delBtn;
+  if(p.status==='admitted'){
+    document.getElementById('detail-body').insertAdjacentHTML('afterbegin',
+      '<div class="detail-bed">🛏️ '+(p.bed?'เตียง '+_escB(p.bed):'<span style="color:#e65100">ยังไม่ระบุเตียง</span>')+'</div>');
+  }
   document.getElementById('modal-detail').style.display='flex';
 }
 
@@ -2322,6 +2367,7 @@ function editAdmitPatient(id){
   setVal('r-source-dept', p.sourceDept);
   setVal('r-date', p.admitDate);
   setVal('r-time', p.admitTime);
+  refreshRegBedSelect(); setVal('r-bed', p.bed);
   setVal('r-diag', p.diagnosis);
   setVal('r-diag-spec', p.diagSpec);
   setVal('r-type', p.patientType);
@@ -2407,12 +2453,56 @@ function editDischargedPatient(id){
   });
 }
 
+function openBedMove(id){
+  const p=patients.find(x=>String(x.id)===String(id)); if(!p) return;
+  let ov=document.getElementById('bedmove-overlay');
+  if(!ov){ ov=document.createElement('div'); ov.id='bedmove-overlay';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(6,15,30,.55);display:flex;align-items:center;justify-content:center;z-index:900;padding:16px';
+    document.body.appendChild(ov); }
+  const occ=bedOccupants(p.id);
+  let opts='<option value="">-- เลือกเตียง --</option>';
+  for(let b=1;b<=MAX_BEDS;b++){
+    const cur=String(p.bed)===String(b), o=occ[b];
+    opts+='<option value="'+b+'"'+(cur?' disabled':'')+'>เตียง '+b+' — '+(cur?'ปัจจุบัน':o?_escB(o.name):'ว่าง')+'</option>';
+  }
+  ov.innerHTML='<div style="background:#fff;border-radius:12px;padding:16px;max-width:340px;width:100%;font-family:inherit;color:#1c2333">'
+    +'<div style="font-weight:800;font-size:15px;margin-bottom:4px">🛏️ '+(p.bed?'ย้าย/สลับเตียง':'ระบุเตียง')+'</div>'
+    +'<div style="font-size:13px;color:#555;margin-bottom:10px">'+_escB(p.name)+(p.bed?' (ตอนนี้เตียง '+_escB(p.bed)+')':'')+'</div>'
+    +'<select id="bedmove-sel" style="width:100%;padding:9px;border-radius:8px;border:1px solid #c3ccdd;font-family:inherit;font-size:14px">'+opts+'</select>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">'
+    +'<button type="button" id="bedmove-cancel" style="padding:9px;border-radius:8px;border:1px solid #c3ccdd;background:#fff;font-family:inherit;font-weight:700;cursor:pointer">ยกเลิก</button>'
+    +'<button type="button" id="bedmove-ok" style="padding:9px;border-radius:8px;border:0;background:#1565c0;color:#fff;font-family:inherit;font-weight:700;cursor:pointer">ตกลง</button></div></div>';
+  ov.style.display='flex';
+  ov.querySelector('#bedmove-cancel').onclick=()=>{ ov.style.display='none'; };
+  ov.querySelector('#bedmove-ok').onclick=()=>{
+    const nb=ov.querySelector('#bedmove-sel').value;
+    if(!nb){ showError('กรุณาเลือกเตียง'); return; }
+    doBedMove(p.id, nb);
+  };
+}
+function doBedMove(id, nb){
+  const p=patients.find(x=>String(x.id)===String(id)); if(!p) return;
+  const old=p.bed||'', other=bedOccupants(p.id)[nb];
+  if(other){
+    const msg='เตียง '+nb+' มี '+other.name+' อยู่\nสลับเตียงกันไหม?\n\n'
+      +p.name+': '+(old?'เตียง '+old:'ยังไม่ระบุ')+' → เตียง '+nb+'\n'
+      +other.name+': เตียง '+nb+' → '+(old?'เตียง '+old:'ยังไม่ระบุเตียง');
+    if(!confirm(msg)) return;
+    pushBedHistory(other, nb, old); other.bed=old;
+  }
+  pushBedHistory(p, old, nb); p.bed=nb;
+  saveData(); renderList();
+  const ov=document.getElementById('bedmove-overlay'); if(ov) ov.style.display='none';
+  if(document.getElementById('modal-detail').style.display==='flex') showDetail(p.id);
+  showSuccess(other?'สลับเตียงแล้ว ✓':'ย้ายเตียงแล้ว ✓');
+}
 function undoDischarge(id){
   if(!confirm('ยกเลิก D/C และคืนสถานะเป็น Admitted ใช่ไหม?')) return;
   const p = patients.find(x=>x.id===id);
   if(!p) return;
   // คืนสถานะ admitted
   p.status = 'admitted';
+  if(p.bed && bedOccupants(p.id)[p.bed]){ pushBedHistory(p, p.bed, ''); p.bed=''; setTimeout(()=>showError('เตียงเดิมมีผู้ป่วยอื่นแล้ว กรุณาระบุเตียงใหม่ (กดปุ่ม 🛏️ ระบุเตียง)'),300); }
   // ล้างข้อมูล D/C ทั้งหมด
   p.dcDate = '';
   p.dcTime = '';
