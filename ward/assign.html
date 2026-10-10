@@ -407,9 +407,7 @@ function buildOptions(list, selected){
 function buildBedOptions(selected){
   let html = `<option value="">-</option>`;
   BED_NUMBERS.forEach(n=>{
-    const occ = (typeof regBedOccupant === "function") ? regBedOccupant(n) : null;
-    const who = occ ? " – " + String(occ.name).trim().split(/\s+/)[0] : "";
-    html += `<option value="${n}" ${String(n)===String(selected)?"selected":""}>${n}${who}</option>`;
+    html += `<option value="${n}" ${String(n)===String(selected)?"selected":""}>${n}</option>`;   // เลขเตียงอย่างเดียว ชื่ออยู่ในช่องชื่อผู้ป่วย
   });
   return html;
 }
