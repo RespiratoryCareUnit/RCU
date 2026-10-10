@@ -117,7 +117,7 @@
   }
   table.sheet-table input.bed-patient{min-width:150px;}
   table.sheet-table input.bed-diag{min-width:110px;}
-  table.sheet-table input.autofilled{background:#fff6cc;}   /* เติมให้อัตโนมัติ ควรเหลือบตรวจ */
+  table.sheet-table input.autofilled, table.sheet-table select.autofilled{background:#fff6cc;}   /* เติมให้อัตโนมัติ ควรเหลือบตรวจ */
   table.sheet-table select.bed-num{min-width:36px;padding:6px 1px;}
   table.sheet-table select.bed-ptype{min-width:42px;padding:6px 1px;font-size:.7rem;}
   table.sheet-table select.bed-infect{min-width:38px;padding:6px 1px;font-size:.64rem;}
@@ -703,8 +703,8 @@ document.getElementById("work-days").addEventListener("change", (e)=>{
     rec.groups[t.dataset.gi].beds[t.dataset.bi].bed = newVal;
     autofillBed(t, rec, +day, shift);
   }
-  else if(t.classList.contains("bed-ptype")) rec.groups[t.dataset.gi].beds[t.dataset.bi].ptype = t.value;
-  else if(t.classList.contains("bed-infect")) rec.groups[t.dataset.gi].beds[t.dataset.bi].infect = t.value;
+  else if(t.classList.contains("bed-ptype")){ rec.groups[t.dataset.gi].beds[t.dataset.bi].ptype = t.value; t.classList.remove("autofilled"); }
+  else if(t.classList.contains("bed-infect")){ rec.groups[t.dataset.gi].beds[t.dataset.bi].infect = t.value; t.classList.remove("autofilled"); }
   else if(t.classList.contains("work-fixed-select")) rec[t.dataset.key].name = t.value;
 });
 document.getElementById("work-days").addEventListener("input", (e)=>{
@@ -812,7 +812,7 @@ function copyFromPrevShift(day, shift){
   const copiedSlots = [], skippedDc = [];
   src.rec.groups.forEach((sg, gi)=>{
     const dg = dst.groups[gi]; if(!dg) return;
-    const isEmpty = b => !String(b.bed || "").trim() && !String(b.patient || "").trim() && !String(b.diag || "").trim();
+    const isEmpty = b => !String(b.bed || "").trim() && !String(b.patient || "").trim() && !String(b.diag || "").trim() && !String(b.ptype || "").trim() && !String(b.infect || "").trim();
     (sg.beds || []).forEach((sb, bi)=>{
       const hasSrc = String(sb.bed || "").trim() || String(sb.patient || "").trim();
       if(!hasSrc) return;
@@ -826,13 +826,15 @@ function copyFromPrevShift(day, shift){
       if(ti < 0) return;
       const db = dg.beds[ti];
       db.bed = bedNow; db.patient = sb.patient || ""; db.diag = sb.diag || "";
+      db.ptype = sb.ptype || ""; db.infect = sb.infect || "";                    // ประเภท + เชื้อ ตามเวรก่อนด้วย
       if(n) used.add(n);
       copiedSlots.push([gi, ti]);
     });
   });
   renderWorkDay();
   copiedSlots.forEach(([gi, bi])=>{
-    document.querySelectorAll(`#work-days input.bed-patient[data-day="${day}"][data-shift="${shift}"][data-gi="${gi}"][data-bi="${bi}"], #work-days input.bed-diag[data-day="${day}"][data-shift="${shift}"][data-gi="${gi}"][data-bi="${bi}"]`)
+    const sel = `[data-day="${day}"][data-shift="${shift}"][data-gi="${gi}"][data-bi="${bi}"]`;
+    document.querySelectorAll(`#work-days input.bed-patient${sel}, #work-days input.bed-diag${sel}, #work-days select.bed-ptype${sel}, #work-days select.bed-infect${sel}`)
       .forEach(inp => { if(inp.value){ inp.classList.add("autofilled"); inp.dataset.auto = "1"; } });
   });
   if(copiedSlots.length) scheduleCloudSave({ type: "click", target: document.body });
