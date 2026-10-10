@@ -277,6 +277,7 @@
 
 <section class="panel active" id="assign">
   <button class="print-btn" id="btn-print-assign">📥 ดาวน์โหลด PDF</button>
+  <div id="restore-oct" style="display:none;margin:8px 4px 10px;"><button type="button" class="print-btn" id="btn-restore-oct" style="margin:0;width:100%;padding:8px;font-size:.8rem;background:#fff6cc;border-color:#c99400;color:#6b4e00;">🛟 กู้รายชื่อ ต.ค. 2569 (จากตารางเวร + ประวัติแลกเวร)</button></div>
   <div id="assign-days"></div>
   <div id="assign-print-report" class="print-report"></div>
 </section>
@@ -383,6 +384,45 @@ function freshDayShift(){
   return { groups: ROLES.map(freshGroup), housekeeper:{name:""}, clerk:{name:""}, na:{name:""}, worker:{name:""}, baseline:null, pendingSwap:false, swappedRoles:{} };
 }
 // true if this role is currently mid-swap (live preview) OR was swapped in a past commit for this day/shift
+/* ===== กู้รายชื่อ ต.ค. 2569: ตารางเวร (ตัวพิมพ์จากรูป) + ชื่อล่าสุดจากประวัติแลกเวร เติมเฉพาะช่องที่ว่าง ===== */
+const OCT2569_ROSTER = {"1": {"ดึก": ["สุภรัตน์", "รวิวรรณ", "ศรีสุดา", "อติพร"], "เช้า": ["ผ่องนภา", "มงคล", "กมลพรรณ", "ระพีภัทร", ""], "บ่าย": ["กรรณิกา", "มงคล", "กันยารัตน์", "ลลิดา"]}, "2": {"ดึก": ["พนิดา", "วรัญญา", "อติพร", "สุภรัตน์"], "เช้า": ["ผ่องนภา", "กรรณิกา", "ระพีภัทร", "กมลพรรณ", "รวิวรรณ"], "บ่าย": ["ลลิดา", "กันยารัตน์", "ศรีสุดา", "กรรณิกา"]}, "3": {"ดึก": ["มงคล", "วรัญญา", "ผ่องนภา", "สุภรัตน์"], "เช้า": ["กันยารัตน์", "นันทวี", "กมลพรรณ", "ระพีภัทร", "อติพร"], "บ่าย": ["ศรีสุดา", "มงคล", "อติพร", "สุภรัตน์"]}, "4": {"ดึก": ["รวิวรรณ", "กันยารัตน์", "กรรณิกา", "นันทวี"], "เช้า": ["ศรีสุดา", "สุภรัตน์", "ระพีภัทร", "กมลพรรณ", "มงคล"], "บ่าย": ["ศรีสุดา", "อติพร", "นันทวี", "สุภรัตน์"]}, "5": {"ดึก": ["กรรณิกา", "รวิวรรณ", "มงคล", "วรัญญา"], "เช้า": ["ลลิดา", "นันทวี", "สุภรัตน์", "กมลพรรณ", "ผ่องนภา"], "บ่าย": ["ลลิดา", "รวิวรรณ", "ศรีสุดา", "นันทวี"]}, "6": {"ดึก": ["วรัญญา", "กรรณิกา", "มงคล", "กันยารัตน์"], "เช้า": ["สุภรัตน์", "ศรีสุดา", "นันทวี", "กมลพรรณ", "ผ่องนภา"], "บ่าย": ["กรรณิกา", "รวิวรรณ", "อติพร", "ลลิดา"]}, "7": {"ดึก": ["นันทวี", "วรัญญา", "ศรีสุดา", "กันยารัตน์"], "เช้า": ["มงคล", "ลลิดา", "อติพร", "ระพีภัทร", "ผ่องนภา"], "บ่าย": ["มงคล", "รวิวรรณ", "กรรณิกา", "วรัญญา"]}, "8": {"ดึก": ["อติพร", "พนิดา", "นันทวี", "ลลิดา"], "เช้า": ["ผ่องนภา", "สุภรัตน์", "ศรีสุดา", "กมลพรรณ", "กันยารัตน์"], "บ่าย": ["กันยารัตน์", "รวิวรรณ", "วรัญญา", "ศรีสุดา"]}, "9": {"ดึก": ["ลลิดา", "รวิวรรณ", "สุภรัตน์", "นันทวี"], "เช้า": ["ผ่องนภา", "อติพร", "กมลพรรณ", "ระพีภัทร", "กรรณิกา"], "บ่าย": ["อติพร", "พนิดา", "วรัญญา", "นันทวี"]}, "10": {"ดึก": ["มงคล", "รวิวรรณ", "ลลิดา", "ศรีสุดา"], "เช้า": ["พนิดา", "กรรณิกา", "ระพีภัทร", "นันทวี", "วรัญญา"], "บ่าย": ["พนิดา", "กรรณิกา", "วรัญญา", "นันทวี"]}, "11": {"ดึก": ["ศรีสุดา", "ผ่องนภา", "อติพร", "สุภรัตน์"], "เช้า": ["มงคล", "กันยารัตน์", "กมลพรรณ", "ระพีภัทร", "รวิวรรณ"], "บ่าย": ["มงคล", "กรรณิกา", "ลลิดา", "กันยารัตน์"]}, "12": {"ดึก": ["วรัญญา", "ศรีสุดา", "สุภรัตน์", "อติพร"], "เช้า": ["พนิดา", "นันทวี", "รวิวรรณ", "กมลพรรณ", "ผ่องนภา"], "บ่าย": ["กันยารัตน์", "รวิวรรณ", "ศรีสุดา", "ลลิดา"]}, "13": {"ดึก": ["สุภรัตน์", "ผ่องนภา", "กรรณิกา", "พนิดา"], "เช้า": ["นันทวี", "วรัญญา", "ลลิดา", "ระพีภัทร", "ผ่องนภา"], "บ่าย": ["นันทวี", "ศรีสุดา", "อติพร", "สุภรัตน์"]}, "14": {"ดึก": ["กรรณิกา", "รวิวรรณ", "ลลิดา", "กันยารัตน์"], "เช้า": ["อติพร", "พนิดา", "กมลพรรณ", "ระพีภัทร", "ผ่องนภา"], "บ่าย": ["อติพร", "ศรีสุดา", "นันทวี", "สุภรัตน์"]}, "15": {"ดึก": ["กรรณิกา", "พนิดา", "รวิวรรณ", "วรัญญา"], "เช้า": ["ผ่องนภา", "ลลิดา", "นันทวี", "ระพีภัทร", "สุภรัตน์"], "บ่าย": ["อติพร", "ลลิดา", "กันยารัตน์", "กรรณิกา"]}, "16": {"ดึก": ["ศรีสุดา", "วรัญญา", "นันทวี", "สุภรัตน์"], "เช้า": ["ผ่องนภา", "กันยารัตน์", "กมลพรรณ", "ระพีภัทร", "อติพร"], "บ่าย": ["วรัญญา", "กันยารัตน์", "กรรณิกา", "รวิวรรณ"]}, "17": {"ดึก": ["พนิดา", "ผ่องนภา", "อติพร", "นันทวี"], "เช้า": ["สุภรัตน์", "กรรณิกา", "กมลพรรณ", "ระพีภัทร", "มงคล"], "บ่าย": ["สุภรัตน์", "กรรณิกา", "รวิวรรณ", "มงคล"]}, "18": {"ดึก": ["นันทวี", "พนิดา", "ลลิดา", "ศรีสุดา"], "เช้า": ["สุภรัตน์", "รวิวรรณ", "กมลพรรณ", "ระพีภัทร", ""], "บ่าย": ["รวิวรรณ", "กรรณิกา", "มงคล", "อติพร"]}, "19": {"ดึก": ["กันยารัตน์", "ลลิดา", "พนิดา", "ศรีสุดา"], "เช้า": ["วรัญญา", "นันทวี", "สุภรัตน์", "ระพีภัทร", "ผ่องนภา"], "บ่าย": ["วรัญญา", "นันทวี", "สุภรัตน์", "พนิดา"]}, "20": {"ดึก": ["ศรีสุดา", "กรรณิกา", "ลลิดา", "กันยารัตน์"], "เช้า": ["รวิวรรณ", "อติพร", "กมลพรรณ", "ระพีภัทร", "ผ่องนภา"], "บ่าย": ["พนิดา", "มงคล", "ลลิดา", "กันยารัตน์"]}, "21": {"ดึก": ["รวิวรรณ", "ศรีสุดา", "อติพร", "สุภรัตน์"], "เช้า": ["กันยารัตน์", "กรรณิกา", "วรัญญา", "ลลิดา", "ผ่องนภา"], "บ่าย": ["กันยารัตน์", "กรรณิกา", "ลลิดา", "พนิดา"]}, "22": {"ดึก": ["อติพร", "สุภรัตน์", "มงคล", "วรัญญา"], "เช้า": ["ผ่องนภา", "พนิดา", "กมลพรรณ", "ระพีภัทร", "กันยารัตน์"], "บ่าย": ["ศรีสุดา", "พนิดา", "กันยารัตน์", "ลลิดา"]}, "23": {"ดึก": ["รวิวรรณ", "ผ่องนภา", "กรรณิกา", "นันทวี"], "เช้า": ["ผ่องนภา", "พนิดา", "วรัญญา", "ลลิดา", "ศรีสุดา"], "บ่าย": ["ศรีสุดา", "ลลิดา", "อติพร", "สุภรัตน์"]}, "24": {"ดึก": ["กันยารัตน์", "รวิวรรณ", "กรรณิกา", "วรัญญา"], "เช้า": ["อติพร", "นันทวี", "กมลพรรณ", "ระพีภัทร", "สุภรัตน์"], "บ่าย": ["อติพร", "ศรีสุดา", "นันทวี", "สุภรัตน์"]}, "25": {"ดึก": ["วรัญญา", "รวิวรรณ", "กรรณิกา", "มงคล"], "เช้า": ["สุภรัตน์", "กันยารัตน์", "กมลพรรณ", "ระพีภัทร", "พนิดา"], "บ่าย": ["นันทวี", "พนิดา", "กันยารัตน์", "รวิวรรณ"]}, "26": {"ดึก": ["สุภรัตน์", "มงคล", "วรัญญา", "ลลิดา"], "เช้า": ["พนิดา", "ศรีสุดา", "กมลพรรณ", "ระพีภัทร", "ผ่องนภา"], "บ่าย": ["รวิวรรณ", "ศรีสุดา", "กรรณิกา", "กันยารัตน์"]}, "27": {"ดึก": ["นันทวี", "พนิดา", "มงคล", "วรัญญา"], "เช้า": ["ลลิดา", "พนิดา", "กันยารัตน์", "กมลพรรณ", "ผ่องนภา"], "บ่าย": ["วรัญญา", "กรรณิกา", "มงคล", "รวิวรรณ"]}, "28": {"ดึก": ["ลลิดา", "พนิดา", "กันยารัตน์", "นันทวี"], "เช้า": ["อติพร", "ศรีสุดา", "สุภรัตน์", "ระพีภัทร", "ผ่องนภา"], "บ่าย": ["อติพร", "กรรณิกา", "มงคล", "วรัญญา"]}, "29": {"ดึก": ["ลลิดา", "ศรีสุดา", "กันยารัตน์", "สุภรัตน์"], "เช้า": ["ผ่องนภา", "รวิวรรณ", "อติพร", "ระพีภัทร", "กรรณิกา"], "บ่าย": ["พนิดา", "มงคล", "วรัญญา", "นันทวี"]}, "30": {"ดึก": ["ลลิดา", "กันยารัตน์", "ศรีสุดา", "อติพร"], "เช้า": ["ผ่องนภา", "มงคล", "กมลพรรณ", "ระพีภัทร", "วรัญญา"], "บ่าย": ["นันทวี", "รวิวรรณ", "พนิดา", "กรรณิกา"]}, "31": {"ดึก": ["สุภรัตน์", "ศรีสุดา", "อติพร", "มงคล"], "เช้า": ["กรรณิกา", "รวิวรรณ", "กมลพรรณ", "ระพีภัทร", "วรัญญา"], "บ่าย": ["ลลิดา", "รวิวรรณ", "วรัญญา", "กันยารัตน์"]}};
+function emptyNameSlots(){
+  let n = 0;
+  for(let d = 1; d <= NUM_DAYS; d++) SHIFTS.forEach(sh=>{ const r = assign[d] && assign[d][sh]; if(r) r.groups.forEach(g=>{ if(!String(g.name || "").trim()) n++; }); });
+  return n;
+}
+function updateRestoreBanner(){
+  const el = document.getElementById("restore-oct"); if(!el) return;
+  try{ el.style.display = (loadOk && loadedKey === "M2569-10" && emptyNameSlots() >= 10) ? "block" : "none"; }
+  catch(e){ el.style.display = "none"; }          // ตอนเปิดหน้า ตัวแปรสถานะยังไม่พร้อม: ข้ามไปก่อน
+}
+function restoreOct2569(){
+  if(loadedKey !== "M2569-10" || !loadOk) return;
+  if(!confirm("เติมรายชื่อพยาบาล ต.ค. 2569 ให้ช่องที่ว่าง\nจากตารางเวร (ตัวพิมพ์) + ชื่อล่าสุดในประวัติแลกเวร\n\nช่องที่มีชื่ออยู่แล้วจะไม่ถูกแตะ\nทำเลยไหม?")) return;
+  const last = {};
+  (changeLog || []).forEach(c=>{ last[String(c.day) + "|" + c.shift + "|" + c.role] = c.to; });
+  let filled = 0;
+  Object.keys(OCT2569_ROSTER).forEach(dk=>{
+    const day = +dk;
+    SHIFTS.forEach(sh=>{
+      const src = OCT2569_ROSTER[dk][sh], rec = assign[day] && assign[day][sh];
+      if(!src || !rec) return;
+      ROLES.forEach((role, gi)=>{
+        const g = rec.groups[gi]; if(!g || String(g.name || "").trim()) return;
+        const k = String(day) + "|" + sh + "|" + role;
+        let name = (k in last) ? last[k] : src[gi];
+        if(name === "(ว่าง)") name = "";
+        if(name){ g.name = name; filled++; }
+      });
+      if(src[4] && rec.housekeeper && !String(rec.housekeeper.name || "").trim()){ rec.housekeeper.name = src[4]; filled++; }
+    });
+  });
+  renderAssignDays();
+  if(typeof renderWorkDay === "function") renderWorkDay();
+  scheduleCloudSave({ type: "click", target: document.body });
+  updateRestoreBanner();
+  alert("เติมกลับ " + filled + " ช่องแล้ว\nตรวจดูสักรอบ ช่องไหนไม่ตรง แก้ได้ตามปกติ");
+}
 function isRoleChanged(rec, role, currentName){
   if(rec.swappedRoles && rec.swappedRoles[role]) return true;
   if(rec.pendingSwap && rec.baseline && rec.baseline[role] !== currentName) return true;
@@ -399,6 +439,7 @@ function ensureAssignDays(){
 
 function buildOptions(list, selected){
   let html = `<option value="">-</option>`;
+  if(selected && list.indexOf(selected) < 0) list = [selected].concat(list);   // ชื่อที่มีในข้อมูลแต่ไม่อยู่ในรายชื่อตั้งค่า: ยังแสดง
   list.forEach(name=>{
     html += `<option value="${name}" ${name===selected?"selected":""}>${name}</option>`;
   });
@@ -490,6 +531,7 @@ function renderAssignDays(){
     html += `</div>`;
   }
   document.getElementById("assign-days").innerHTML = html;
+  updateRestoreBanner();
 }
 document.getElementById("assign-days").addEventListener("change", (e)=>{
   const t = e.target;
@@ -1460,11 +1502,20 @@ function currentPayload(){
 let monthBase = null;                 // หน้าตาเดือนนี้ตอนตรงกับส่วนกลางล่าสุด
 let saving = false, saveAgain = false;
 function isObj(v){ return v && typeof v === "object" && !Array.isArray(v); }
-function merge3(base, local, server){
+function merge3(base, local, server, key){
+  // ประวัติแลกเวร: รวมรายการจากทุกเครื่อง ไม่มีรายการไหนหาย
+  if(key === "changeLog" && Array.isArray(local) && Array.isArray(server)){
+    const seen = new Set(server.map(x => JSON.stringify(x)));
+    return server.concat(local.filter(x => !seen.has(JSON.stringify(x))));
+  }
+  // รายชื่อพยาบาล/เตียงของแต่ละเวรเป็นชุดความยาวคงที่: รวมทีละตำแหน่ง ไม่ให้ทั้งชุดของเครื่องหนึ่งทับอีกเครื่อง
+  if(Array.isArray(local) && Array.isArray(server) && local.length === server.length && (!Array.isArray(base) || base.length === local.length)){
+    return local.map((_, i)=> merge3(Array.isArray(base) ? base[i] : undefined, local[i], server[i]));
+  }
   if(isObj(local) && isObj(server)){
     const out = {};
     const keys = new Set([...Object.keys(server), ...Object.keys(local), ...(isObj(base) ? Object.keys(base) : [])]);
-    keys.forEach(k=>{ const v = merge3(isObj(base) ? base[k] : undefined, local[k], server[k]); if(v !== undefined) out[k] = v; });
+    keys.forEach(k=>{ const v = merge3(isObj(base) ? base[k] : undefined, local[k], server[k], k); if(v !== undefined) out[k] = v; });
     return out;
   }
   return JSON.stringify(local) !== JSON.stringify(base) ? local : server;
@@ -1680,6 +1731,7 @@ document.getElementById("date-pick").addEventListener("change", (e)=>{
   if(loadedKey === keyFor(yBE, mIdx) && loadOk) goToDay(dd);
   else switchToMonth(yBE, mIdx, dd);
 });
+document.getElementById("btn-restore-oct").addEventListener("click", restoreOct2569);
 // ปฏิทินแท็บมอบหมาย: เหมือนปฏิทินแท็บ Assign (ข้ามเดือนได้)
 document.getElementById("work-date-pick").addEventListener("change", (e)=>{
   const v = e.target.value;
