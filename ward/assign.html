@@ -748,7 +748,7 @@ function findLastPatientForBed(bedNo, day, shift){
 }
 // รายชื่อจากระบบลงทะเบียน ใช้เช็คว่าผู้ป่วยเดิมของเตียงจำหน่ายไปแล้วหรือยัง (โหลดไม่ได้ก็ข้ามการเช็ค)
 // ที่อยู่ระบบลงทะเบียน (ชุดเดียวกับที่หน้าบันทึกเหตุการณ์ใช้)
-const REG_URL = "https://script.google.com/macros/s/AKfycbzr9m8ykJeeKns-iVCeT1lddkRNVpsl3SFgpEJX4HNaoE943S6JDqoVSFytKLnUcVhElw/exec";
+const REG_URL = "https://script.google.com/macros/s/AKfycbz67llALRKtVGJwVew6PKmVynCO6tibYGh4T5eiBdYHfabp4TStZ9ODHfDOCDc89zU6/exec";
 let regPatients = null;
 async function loadRegForBeds(){
   try{
