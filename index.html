@@ -2502,6 +2502,9 @@ function undoDischarge(id){
   if(p.bed && bedOccupants(p.id)[p.bed]){ pushBedHistory(p, p.bed, ''); p.bed=''; setTimeout(()=>showError('เตียงเดิมมีผู้ป่วยอื่นแล้ว กรุณาระบุเตียงใหม่ (กดปุ่ม 🛏️ ระบุเตียง)'),300); }
   // ล้างข้อมูล D/C ทั้งหมด
   p.dcDate = '';
+  p.dischargeDate = null; p.dischargeTime = '';
+  p.finalDiag = null; p.finalDiagSpec = null;
+  p.dcWard = ''; p.dcDestination = '';
   p.dcTime = '';
   p.dcType = '';
   p.dcDest = '';
@@ -3304,41 +3307,18 @@ function doDischarge(){
 function renderDash(){
   const y=+document.getElementById('dash-year').value;
   const m=+document.getElementById('dash-month').value;
+  // ใช้สูตรเดียวกับรายงาน Excel (buildMonthPayload) ให้ตัวเลขตรงกันเสมอ
+  const _pl=buildMonthPayload(y,m), _s=_pl.stats;
   const monthPts=patients.filter(p=>{const d=new Date(p.admitDate);return d.getFullYear()===y&&d.getMonth()+1===m});
-  const admitted=monthPts.length;
-  const discharged=monthPts.filter(p=>p.status==='discharged').length;
-  const deaths=monthPts.filter(p=>p.dcType==='เสียชีวิต').length;
-  const census=patients.filter(p=>p.status==='admitted').length;
+  const admitted=_s.admitted, discharged=_s.discharged, deaths=_s.deaths, census=_s.census;
   const critical=patients.filter(p=>p.status==='admitted'&&['5','4a','4b'].includes(p.patientType)).length;
-  const refers=monthPts.filter(p=>p.dcType==='Refer').length;
-  const transfers=monthPts.filter(p=>p.dcType==='ย้าย ward').length;
-  const nrC=monthPts.filter(p=>p.nr).length;
-  const cprC=monthPts.filter(p=>p.cpr).length;
-  const refusedC=monthPts.filter(p=>p.refused).length;
-  const weanOk=monthPts.filter(p=>p.weanSuccess).length;
-  const weanFail=monthPts.filter(p=>p.weanFail).length;
-  const totalLOS=monthPts.reduce((s,p)=>s+(p.los||0),0);
-  const days=daysInMonth(y,m);
-  const mortality=admitted>0?(deaths*100/admitted).toFixed(1):0;
-  const occupancy=((totalLOS*100)/(8*days)).toFixed(1);
-  const erAdmits=monthPts.filter(p=>p.source==='ER').length;
-  const wardAdmits=monthPts.filter(p=>p.source&&p.source!=='ER').length;
-  const avgER=(erAdmits/days).toFixed(2);
-  const avgTrans=(admitted/days).toFixed(2);
-  const prevAdmitted=patients.filter(p=>{
-    const d=new Date(p.admitDate);
-    return(d.getFullYear()<y||(d.getFullYear()===y&&d.getMonth()+1<m))&&
-      (p.status==='admitted'||new Date(p.dischargeDate)>=new Date(y,m-1,1));
-  }).length;
-
-  const dc={};
-  monthPts.forEach(p=>{const d=diagLabel(p.diagnosis,p.diagSpec);dc[d]=(dc[d]||0)+1;});
-  const topDiag=Object.entries(dc).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const refers=_s.refers, transfers=_s.transfers, nrC=_s.nrC, cprC=_s.cprC, refusedC=_s.refusedC;
+  const weanOk=_s.weanOk, weanFail=_s.weanFail, totalLOS=_s.totalLOS, days=_pl.days;
+  const mortality=_s.mortality, occupancy=_s.occupancy, erAdmits=_s.erAdmits, wardAdmits=_s.wardAdmits;
+  const avgER=_s.avgER, avgTrans=_s.avgTrans, prevAdmitted=_s.prevAdmitted;
+  const topDiag=_pl.topDiag;
   const maxD=topDiag[0]?.[1]||1;
-
-  const ddc={};
-  monthPts.filter(p=>p.dcType==='เสียชีวิต').forEach(p=>{const d=p.finalDiag||p.diagnosis;ddc[d]=(ddc[d]||0)+1;});
-  const topDeath=Object.entries(ddc).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const topDeath=_pl.topDeath;
 
   const kpiCards=[
     {icon:'🏥',val:census,lbl:'Census (คงอยู่)',color:'#00d4ff'},
@@ -3355,7 +3335,7 @@ function renderDash(){
   const qiShock=monthPts.filter(p=>p.qi?.shock==='yes').length;
   const qiReadmit=monthPts.filter(p=>p.qi?.readmit==='yes').length;
   const qiTube=monthPts.filter(p=>p.qi?.tube==='yes').length;
-  const wardTransfers=monthPts.filter(p=>p.dcType==='ย้าย ward').length;
+  const wardTransfers=_s.transfers;
 
   const monthly=[
     ['ยอดยกมา',prevAdmitted+' ราย'],['รับใหม่ (ทั้งหมด)',admitted+' ราย'],
