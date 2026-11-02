@@ -48,6 +48,10 @@
   .duty-shift-card.shift-เช้า{background:#fbedd9;} .duty-shift-card.shift-เช้า h4{color:var(--shift-morn);}
   .duty-shift-card.shift-บ่าย{background:#dbefdf;} .duty-shift-card.shift-บ่าย h4{color:var(--shift-aft);}
   .duty-field{margin-bottom:6px;}
+  .duty-field .duty-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:2px;}
+  .duty-field .duty-head label{margin:0;}
+  .brk-cfg-wrap{font-size:.68rem;color:#333333;white-space:nowrap;}
+  .brk-cfg{width:58px;padding:3px 5px;border:1px solid var(--line);border-radius:6px;font-size:.74rem;font-family:inherit;text-align:center;background:#ffffff;}
   .duty-field label{display:block;font-size:.68rem;color:#333333;margin-bottom:2px;}
   .duty-field textarea{width:100%;min-height:32px;padding:5px 7px;border:1px solid var(--line);border-radius:6px;font-size:.76rem;font-family:inherit;resize:vertical;background:#ffffff;}
 
@@ -344,6 +348,33 @@ const DEFAULT_DUTY_SEED = {
   worker: "ทำความสะอาดตู้โต๊ะข้างเตียง, เทขยะ, เบิกและนับผ้า",
 };
 const DEFAULT_BREAK = { Incharge:"12.00", Member1:"11.00", Member2:"12.00", Member3:"11.00", housekeeper:"12.00", clerk:"12.00", na:"11.00", worker:"12.00" };
+// เวลาพักแยกตามเวร (ค่าเริ่มต้น) — แก้ได้ในหน้าตั้งค่า และแก้รายวันได้ในตารางมอบหมายงาน
+const BREAK_SHIFT_MAP = { "เช้า": {"11.00":"11.00","12.00":"12.00"}, "บ่าย": {"11.00":"18.00","12.00":"19.00"}, "ดึก": {"11.00":"4.00","12.00":"5.00"} };
+let BREAK_CONFIG = {};
+SHIFTS.forEach(sh=>{ BREAK_CONFIG[sh] = {}; Object.keys(DEFAULT_BREAK).forEach(r=> BREAK_CONFIG[sh][r] = (BREAK_SHIFT_MAP[sh]||{})[DEFAULT_BREAK[r]] || DEFAULT_BREAK[r]); });
+const CFG_LOCAL_KEY = "rcu_assign_cfg_v1";
+function cfgSnapshot(){ return { brk: JSON.parse(JSON.stringify(BREAK_CONFIG)), duty: JSON.parse(JSON.stringify(DUTY_CONFIG)) }; }
+function applyCfg(c){
+  if(!c || typeof c !== "object") return;
+  SHIFTS.forEach(sh=>{
+    if(c.brk && c.brk[sh]) Object.keys(c.brk[sh]).forEach(r=>{ if(BREAK_CONFIG[sh]) BREAK_CONFIG[sh][r] = String(c.brk[sh][r] ?? ""); });
+    if(c.duty && c.duty[sh]) Object.keys(c.duty[sh]).forEach(r=>{ if(DUTY_CONFIG[sh]) DUTY_CONFIG[sh][r] = String(c.duty[sh][r] ?? ""); });
+  });
+}
+function saveCfgLocal(){ try{ localStorage.setItem(CFG_LOCAL_KEY, JSON.stringify(cfgSnapshot())); }catch(e){} }
+function brkFor(rec, shift, role){
+  const o = rec && rec.brk && rec.brk[role];
+  if(o !== undefined && o !== null && String(o).trim() !== "") return String(o);
+  return (BREAK_CONFIG[shift] && BREAK_CONFIG[shift][role]) || "";
+}
+function brkDatalist(shift){
+  const vals = [...new Set(Object.values(BREAK_CONFIG[shift] || {}).filter(v=> String(v).trim()))];
+  return `<datalist id="brk-list-${shift}">${vals.map(v=>`<option value="${v}"></option>`).join("")}</datalist>`;
+}
+function brkInput(day, shift, role, cls){
+  const rec = assign[day] && assign[day][shift];
+  return `<input type="text" inputmode="decimal" class="${cls} brk-input" list="brk-list-${shift}" data-day="${day}" data-shift="${shift}" data-role="${role}" value="${brkFor(rec, shift, role)}">`;
+}
 
 let NUM_DAYS = 31;
 let ROSTER_RN = [];
@@ -358,6 +389,7 @@ SHIFTS.forEach(sh=>{
   DUTY_CONFIG[sh] = {};
   ROLES.concat(FIXED_KEYS).concat(WORK_ONLY_KEYS).forEach(r=> DUTY_CONFIG[sh][r] = DEFAULT_DUTY_SEED[r] || "");
 });
+try{ applyCfg(JSON.parse(localStorage.getItem(CFG_LOCAL_KEY) || "null")); }catch(e){}   // ค่าตั้งค่าล่าสุดในเครื่อง (ใช้กับเดือนที่ยังไม่มีค่าเก็บไว้)
 let currentTab = "assign";
 let changeLog = []; // {day, shift, role, from, to, time}
 
@@ -479,19 +511,19 @@ function renderDutySettings(){
   SHIFTS.forEach(sh=>{
     html += `<div class="duty-shift-card shift-${sh}"><h4>เวร${sh}</h4>`;
     ROLES.forEach(role=>{
-      html += `<div class="duty-field"><label>${ROLE_LABELS[role]}</label>
+      html += `<div class="duty-field"><div class="duty-head"><label>${ROLE_LABELS[role]}</label><span class="brk-cfg-wrap">พัก <input type="text" inputmode="decimal" class="brk-cfg" data-shift="${sh}" data-role="${role}" value="${BREAK_CONFIG[sh][role]||""}"></span></div>
         <textarea class="duty-input" data-shift="${sh}" data-role="${role}">${DUTY_CONFIG[sh][role]}</textarea></div>`;
     });
     if(sh === "เช้า"){
       FIXED_KEYS.forEach(key=>{
-        html += `<div class="duty-field"><label>${FIXED_LABELS[key]}</label>
+        html += `<div class="duty-field"><div class="duty-head"><label>${FIXED_LABELS[key]}</label><span class="brk-cfg-wrap">พัก <input type="text" inputmode="decimal" class="brk-cfg" data-shift="${sh}" data-role="${key}" value="${BREAK_CONFIG[sh][key]||""}"></span></div>
           <textarea class="duty-input" data-shift="${sh}" data-role="${key}">${DUTY_CONFIG[sh][key]}</textarea></div>`;
       });
     }
     WORK_ONLY_KEYS.forEach(key=>{
       const restrict = WORK_ONLY_RESTRICT[key];
       if(restrict && !restrict.includes(sh)) return; // matches the work-tab roster exactly (e.g. clerk = เช้า only)
-      html += `<div class="duty-field"><label>${WORK_ONLY_LABELS[key]}</label>
+      html += `<div class="duty-field"><div class="duty-head"><label>${WORK_ONLY_LABELS[key]}</label><span class="brk-cfg-wrap">พัก <input type="text" inputmode="decimal" class="brk-cfg" data-shift="${sh}" data-role="${key}" value="${BREAK_CONFIG[sh][key]||""}"></span></div>
         <textarea class="duty-input" data-shift="${sh}" data-role="${key}">${DUTY_CONFIG[sh][key]}</textarea></div>`;
     });
     html += `</div>`;
@@ -502,6 +534,10 @@ function readDutySettings(){
   document.querySelectorAll(".duty-input").forEach(ta=>{
     DUTY_CONFIG[ta.dataset.shift][ta.dataset.role] = ta.value;
   });
+  document.querySelectorAll(".brk-cfg").forEach(inp=>{
+    BREAK_CONFIG[inp.dataset.shift][inp.dataset.role] = inp.value.trim();
+  });
+  saveCfgLocal();
 }
 
 /* ---------------- tab 1: Assign In-charge ---------------- */
@@ -602,7 +638,6 @@ function buildShiftTable(day, shift){
 
   rec.groups.forEach((g, gi)=>{
     const dutyText = DUTY_CONFIG[shift][g.role] || "";
-    const brk = DEFAULT_BREAK[g.role] || "";
     g.beds.forEach((bed, bi)=>{
       html += `<tr class="${gi % 2 === 0 ? "grp-even" : "grp-odd"}">`;
       if(bi===0){
@@ -617,7 +652,7 @@ function buildShiftTable(day, shift){
       html += `<td><select class="bed-infect" data-day="${day}" data-shift="${shift}" data-gi="${gi}" data-bi="${bi}">${buildInfectOptions(bed.infect)}</select></td>`;
       if(bi===0){
         html += `<td rowspan="2" class="duty-cell">${dutyText}</td>`;
-        html += `<td rowspan="2"><input type="text" class="grp-brk" value="${brk}" readonly></td>`;
+        html += `<td rowspan="2">${brkInput(day, shift, g.role, "grp-brk")}</td>`;
       }
       html += `</tr>`;
     });
@@ -626,12 +661,11 @@ function buildShiftTable(day, shift){
   if(shift === "เช้า"){
     FIXED_KEYS.forEach(key=>{
       const dutyText = DUTY_CONFIG[shift][key] || "";
-      const brk = DEFAULT_BREAK[key] || "";
       html += `<tr class="fixed-row row-${key}">
         <td class="name-slot" data-key="${key}">${nameCellHtml(rec[key].name)}</td>
         <td class="role-cell">${FIXED_LABELS[key]}</td>
         <td colspan="6" class="duty-cell">${dutyText}</td>
-        <td><input type="text" class="fixed-brk" value="${brk}" readonly></td>
+        <td>${brkInput(day, shift, key, "fixed-brk")}</td>
       </tr>`;
     });
   }
@@ -641,16 +675,15 @@ function buildShiftTable(day, shift){
     const restrict = WORK_ONLY_RESTRICT[key];
     if(restrict && !restrict.includes(shift)) return; // skip on shifts this role doesn't apply to
     const dutyText = DUTY_CONFIG[shift][key] || "";
-    const brk = DEFAULT_BREAK[key] || "";
     html += `<tr class="fixed-row row-${key}">
       <td><select class="work-fixed-select" data-day="${day}" data-shift="${shift}" data-key="${key}">${buildOptions(workRosterList[key], rec[key].name)}</select></td>
       <td class="role-cell">${WORK_ONLY_LABELS[key]}</td>
       <td colspan="6" class="duty-cell">${dutyText}</td>
-      <td><input type="text" class="fixed-brk" value="${brk}" readonly></td>
+      <td>${brkInput(day, shift, key, "fixed-brk")}</td>
     </tr>`;
   });
 
-  html += `</table></div>`;
+  html += `</table></div>${brkDatalist(shift)}`;
   return html;
 }
 function renderWorkDay(){
@@ -663,7 +696,7 @@ function renderWorkDay(){
   const monthName = getMonthLabel();
   let html = `<div id="workday-${d}"><div class="day-heading">วันที่ ${d} เดือน ${monthName}</div>`;
   SHIFTS.forEach(shift=>{
-    html += `<div class="shift-label shift-${shift}" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">เวร${shift}<button type="button" class="copy-prev-btn" data-day="${d}" data-shift="${shift}">📋 คัดลอกจากเวรก่อน</button></div>${buildShiftTable(d, shift)}`;
+    html += `<div class="shift-label shift-${shift}">เวร${shift}</div>${buildShiftTable(d, shift)}`;
   });
   html += `</div>`;
   document.getElementById("work-days").innerHTML = html;
@@ -712,6 +745,7 @@ document.getElementById("work-days").addEventListener("input", (e)=>{
   const day = t.dataset.day, shift = t.dataset.shift;
   if(!day || !shift) return;
   const rec = assign[day][shift];
+  if(t.classList.contains("brk-input")){ if(!rec.brk) rec.brk = {}; rec.brk[t.dataset.role] = t.value.trim(); return; }
   if(t.classList.contains("bed-patient")) rec.groups[t.dataset.gi].beds[t.dataset.bi].patient = t.value;
   else if(t.classList.contains("bed-diag")) rec.groups[t.dataset.gi].beds[t.dataset.bi].diag = t.value;
   if(t.classList.contains("bed-patient") || t.classList.contains("bed-diag")){ t.classList.remove("autofilled"); delete t.dataset.auto; }   // พิมพ์เอง = ไม่ใช่ค่าที่เติมให้แล้ว
@@ -1163,8 +1197,11 @@ function generateAll(){
 }
 
 document.getElementById("work-day-input").addEventListener("input", renderWorkDay);
+document.getElementById("duty-settings").addEventListener("input", ()=> readDutySettings());   // ค่าในตั้งค่าเข้าระบบทันที แล้วบันทึกขึ้นคลาวด์พร้อมข้อมูลเดือน
+document.getElementById("duty-settings").addEventListener("change", ()=>{ readDutySettings(); renderWorkDay(); });
 document.getElementById("btn-generate").addEventListener("click", ()=>{
   generateAll();
+  scheduleCloudSave({ type: "click", target: document.body });
   document.querySelector("details.settings").removeAttribute("open");
 });
 document.querySelectorAll("nav.tabs button").forEach(btn=>{
@@ -1248,7 +1285,7 @@ function buildWorkReportHtml(day){
       const chg = rec.swappedRoles && rec.swappedRoles[g.role];
       const nameVal = escapeHtml(g.name) || "-";
       const nameCell = chg ? `<span class="chg">${nameVal}</span>` : nameVal;
-      const brk = DEFAULT_BREAK[g.role] || "";
+      const brk = brkFor(rec, shift, g.role);
       g.beds.forEach((bed, bi)=>{
         html += `<tr>`;
         if(bi===0){
@@ -1261,11 +1298,11 @@ function buildWorkReportHtml(day){
       });
     });
     if(shift === "เช้า"){
-      html += `<tr><td>${escapeHtml(rec.housekeeper.name) || "-"}</td><td>แม่บ้าน</td><td colspan="4"></td><td>${DEFAULT_BREAK.housekeeper}</td></tr>`;
-      html += `<tr><td>${escapeHtml(rec.clerk.name) || "-"}</td><td>เสมียน</td><td colspan="4"></td><td>${DEFAULT_BREAK.clerk}</td></tr>`;
+      html += `<tr><td>${escapeHtml(rec.housekeeper.name) || "-"}</td><td>แม่บ้าน</td><td colspan="4"></td><td>${brkFor(rec, shift, "housekeeper")}</td></tr>`;
+      html += `<tr><td>${escapeHtml(rec.clerk.name) || "-"}</td><td>เสมียน</td><td colspan="4"></td><td>${brkFor(rec, shift, "clerk")}</td></tr>`;
     }
-    html += `<tr><td>${escapeHtml(rec.na.name) || "-"}</td><td>NA</td><td colspan="4"></td><td>${DEFAULT_BREAK.na}</td></tr>`;
-    html += `<tr><td>${escapeHtml(rec.worker.name) || "-"}</td><td>คนงาน</td><td colspan="4"></td><td>${DEFAULT_BREAK.worker}</td></tr>`;
+    html += `<tr><td>${escapeHtml(rec.na.name) || "-"}</td><td>NA</td><td colspan="4"></td><td>${brkFor(rec, shift, "na")}</td></tr>`;
+    html += `<tr><td>${escapeHtml(rec.worker.name) || "-"}</td><td>คนงาน</td><td colspan="4"></td><td>${brkFor(rec, shift, "worker")}</td></tr>`;
     html += `</table>`;
   });
   document.getElementById("work-print-report").innerHTML = html;
@@ -1446,6 +1483,7 @@ function applyLoadedMonth(d){
   if(d.rosterRN) document.getElementById("roster-rn").value = d.rosterRN;
   if(d.rosterNA) document.getElementById("roster-na").value = d.rosterNA;
   if(d.rosterWK) document.getElementById("roster-wk").value = d.rosterWK;
+  if(d.cfg){ applyCfg(d.cfg); saveCfgLocal(); renderDutySettings(); }
   ROSTER_RN = parseRoster(document.getElementById("roster-rn").value);
   ROSTER_NA = parseRoster(document.getElementById("roster-na").value);
   ROSTER_WK = parseRoster(document.getElementById("roster-wk").value);
@@ -1496,7 +1534,8 @@ function currentPayload(){
     numDays: document.getElementById("num-days").value,
     rosterRN: document.getElementById("roster-rn").value,
     rosterNA: document.getElementById("roster-na").value,
-    rosterWK: document.getElementById("roster-wk").value
+    rosterWK: document.getElementById("roster-wk").value,
+    cfg: cfgSnapshot()
   };
 }
 
@@ -1530,7 +1569,7 @@ function normalizeMonthData(d){
     NUM_DAYS = parseInt(d && d.numDays) || NUM_DAYS;
     ensureAssignDays();
     return { assign, changeLog: (d && d.changeLog) || [], numDays: d && d.numDays,
-             rosterRN: d && d.rosterRN, rosterNA: d && d.rosterNA, rosterWK: d && d.rosterWK };
+             rosterRN: d && d.rosterRN, rosterNA: d && d.rosterNA, rosterWK: d && d.rosterWK, cfg: d && d.cfg };
   } finally { assign = keepA; NUM_DAYS = keepN; }
 }
 function hasFocusInData(){

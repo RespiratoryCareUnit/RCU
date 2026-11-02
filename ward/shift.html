@@ -679,10 +679,10 @@ const P4PD_ROWS = [
   ["คงพยาบาล","census.remain","link"],
   ["จำนวนวันนอน","p4pd.bedDays","edit"],
 ];
-// RN+TN incl. OT = RN(ปกติ+OT) + NA(ปกติ+OT) already entered in the daily table
+// RN+TN incl. OT = นับเฉพาะ RN (ปกติ+OT) ไม่นับ TN/NA
 function computeRnTn(sh){
   const n = p=>{ const v=parseFloat(getDeep(data.shifts[sh],p)); return isNaN(v)?0:v; };
-  return n("staff.RN.normal")+n("staff.RN.ot")+n("staff.NA.normal")+n("staff.NA.ot");
+  return n("staff.RN.normal")+n("staff.RN.ot");
 }
 function renderP4pdList(){
   const el = document.getElementById("p4pd-list");
@@ -2327,7 +2327,7 @@ function buildP4pMonthSheet(year, month1, onlyDay){
         if(rec){
           if(item.mode === "rntn"){
             const n = p=>{ const x=parseFloat(getDeep(rec.shifts[sh],p)); return isNaN(x)?0:x; };
-            v = n("staff.RN.normal")+n("staff.RN.ot")+n("staff.NA.normal")+n("staff.NA.ot");
+            v = n("staff.RN.normal")+n("staff.RN.ot");
           } else {
             const x = parseFloat(getDeep(rec.shifts[sh], item.path));
             v = isNaN(x) ? 0 : x;
